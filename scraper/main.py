@@ -1,27 +1,95 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from .api import router
+from .utils import Config, configure_logging, get_logger
+from .services import ScrapingService, MessageBrokerService
+from .repositories import MongoDBRepository
 
-app = FastAPI(title="Scraper Service", version="1.0.0")
+# Configure logging
+configure_logging(Config.LOG_LEVEL)
+logger = get_logger(__name__)
+
+# Validate configuration
+try:
+    Config.validate()
+except ValueError as e:
+    logger.error("Configuration validation failed", error=str(e))
+    raise
+
+# Global services
+scraping_service = None
+message_broker = None
+mongodb_repo = None
 
 
-class HealthResponse(BaseModel):
-    status: str
-    service: str
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle"""
+    global scraping_service, message_broker, mongodb_repo
+    
+    logger.info("Starting scraper service")
+    
+    # Initialize services
+    try:
+        scraping_service = ScrapingService()
+        message_broker = MessageBrokerService()
+        mongodb_repo = MongoDBRepository()
+        logger.info("Services initialized successfully")
+    except Exception as e:
+        logger.error("Failed to initialize services", error=str(e))
+        raise
+    
+    yield
+    
+    # Cleanup
+    logger.info("Shutting down scraper service")
+    try:
+        if scraping_service:
+            await scraping_service.close()
+        if message_broker:
+            message_broker.close()
+        if mongodb_repo:
+            mongodb_repo.close()
+        logger.info("Services cleaned up successfully")
+    except Exception as e:
+        logger.error("Error during cleanup", error=str(e))
 
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {"message": "Welcome to Scraper Service"}
+# Create FastAPI app
+app = FastAPI(
+    title="Scraper Service",
+    version="2.0.0",
+    description="News scraping service with MongoDB and RabbitMQ integration",
+    lifespan=lifespan
+)
 
+# Add CORS middleware with specific origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=Config.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
-@app.get("/health", response_model=HealthResponse)
+# Include API routes
+app.include_router(router, prefix="/api/v1", tags=["scraper"])
+
+# Health check endpoint
+@app.get("/health")
 async def health():
-    """Health check endpoint"""
-    return HealthResponse(status="healthy", service="scraper")
+    """Simple health check endpoint"""
+    return {"status": "healthy", "service": Config.SERVICE_NAME}
 
 
-@app.get("/scrape")
-async def scrape():
-    """Scrape endpoint - placeholder for scraping functionality"""
-    return {"message": "Scraping functionality to be implemented"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level=Config.LOG_LEVEL.lower()
+    )
