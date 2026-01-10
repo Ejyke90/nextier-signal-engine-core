@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  scraper:
+    build:
+      context: ./scraper
+      dockerfile: Dockerfile
+    container_name: scraper-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./scraper:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+
+  intelligence-api:
+    build:
+      context: ./intelligence-api
+      dockerfile: Dockerfile
+    container_name: intelligence-api-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./intelligence-api:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+
+  predictor:
+    build:
+      context: ./predictor
+      dockerfile: Dockerfile
+    container_name: predictor-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./predictor:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+
+networks:
+  signal-engine-network:
+    driver: bridge
