@@ -1,0 +1,28 @@
+[
+  {
+    "event_type": "clash",
+    "state": "Borno",
+    "lga": "Maiduguri",
+    "severity": "high",
+    "fuel_price": 570.0,
+    "inflation": 28.9,
+    "risk_score": 100,
+    "risk_level": "Critical",
+    "source_title": "Headline Stories",
+    "source_url": "https://www.premiumtimesng.com/category/news/headlines",
+    "calculated_at": "2026-01-10T22:56:07.926075"
+  },
+  {
+    "event_type": "protest",
+    "state": "Lagos",
+    "lga": "Ikeja",
+    "severity": "medium",
+    "fuel_price": 680.0,
+    "inflation": 18.2,
+    "risk_score": 68.0,
+    "risk_level": "High",
+    "source_title": "Headline Stories",
+    "source_url": "https://www.premiumtimesng.com/category/news/headlines",
+    "calculated_at": "2026-01-10T22:56:07.926472"
+  }
+]

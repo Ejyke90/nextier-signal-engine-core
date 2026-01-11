@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
         app.state.message_broker = message_broker
         
         # Initialize scraping service
-        scraping_service = ScrapingService(mongodb_repo, message_broker)
+        scraping_service = ScrapingService()
         app.state.scraping_service = scraping_service
         
         logger.info("All services initialized successfully")

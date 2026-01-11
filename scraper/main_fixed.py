@@ -1,79 +1,87 @@
+import os
 import sys
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Add parent directory to path for imports
 sys.path.insert(0, '/app')
 
+# Import internal modules with absolute imports
+from scraper.api import router
+from scraper.utils import Config, configure_logging, get_logger
+from scraper.services import ScrapingService, MessageBrokerService
+from scraper.repositories import MongoDBRepository
+
+# Configure logging
+configure_logging()
+logger = get_logger(__name__)
+
+# Initialize configuration
+config = Config()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    logger.info("Starting Scraper Service")
+    
+    # Initialize services
+    try:
+        # Initialize MongoDB repository
+        mongodb_repo = MongoDBRepository()
+        app.state.mongodb_repo = mongodb_repo
+        
+        # Initialize message broker
+        message_broker = MessageBrokerService()
+        app.state.message_broker = message_broker
+        
+        # Initialize scraping service
+        scraping_service = ScrapingService()
+        app.state.scraping_service = scraping_service
+        
+        logger.info("All services initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}")
+    
+    yield
+    
+    # Cleanup
+    logger.info("Shutting down Scraper Service")
+
+# Create FastAPI app
 app = FastAPI(
     title="Scraper Service",
     description="News article scraping and processing service",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include API routes
+app.include_router(router, prefix="/api/v1")
+
 @app.get("/")
 async def root():
+    """Root endpoint"""
     return {"message": "Scraper Service is running", "service": "scraper"}
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "scraper", "version": "1.0.0"}
-
-@app.get("/api/v1/articles")
-async def get_articles():
+    """Health check endpoint"""
     return {
-        "count": 8,
-        "articles": [
-            {
-                "id": "1",
-                "title": "Security Alert: Increased Activity in Borno State",
-                "source": "Premium Times",
-                "url": "https://example.com/article1",
-                "scraped_at": "2026-01-11T01:00:00Z"
-            },
-            {
-                "id": "2",
-                "title": "Farmers-Herders Clash in Benue: 5 Killed",
-                "source": "The Cable",
-                "url": "https://example.com/article2",
-                "scraped_at": "2026-01-11T01:15:00Z"
-            },
-            {
-                "id": "3",
-                "title": "Kidnapping Incident Reported in Kaduna",
-                "source": "Daily Trust",
-                "url": "https://example.com/article3",
-                "scraped_at": "2026-01-11T01:30:00Z"
-            },
-            {
-                "id": "4",
-                "title": "Protest Over Fuel Price Hike in Lagos",
-                "source": "Punch",
-                "url": "https://example.com/article4",
-                "scraped_at": "2026-01-11T01:45:00Z"
-            },
-            {
-                "id": "5",
-                "title": "Pipeline Vandalism in Rivers State",
-                "source": "Vanguard",
-                "url": "https://example.com/article5",
-                "scraped_at": "2026-01-11T02:00:00Z"
-            }
-        ]
+        "status": "healthy",
+        "service": "scraper",
+        "version": "1.0.0"
     }
-
-@app.post("/api/v1/scrape")
-async def scrape():
-    return {"message": "Scraping started", "status": "processing"}
 
 if __name__ == "__main__":
     import uvicorn

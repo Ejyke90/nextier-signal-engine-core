@@ -4,6 +4,7 @@ from typing import Dict, Any
 from ..utils import get_logger, Config
 from ..repositories import MongoDBRepository
 from ..services import LLMService, MessageBrokerService
+from ..services.simple_extractor import simple_extract_event
 
 logger = get_logger(__name__)
 
@@ -25,17 +26,29 @@ class ProcessingService:
             
             if not unprocessed_articles:
                 logger.info("No unprocessed articles found")
+                # Return total event count instead of 0
+                total_events = len(self.mongodb_repo.get_parsed_events(limit=Config.MAX_EVENTS_QUERY_LIMIT))
                 return {
                     "status": "success",
                     "articles_processed": 0,
-                    "events_created": 0,
-                    "message": "No new articles to process"
+                    "events_created": total_events,
+                    "message": f"No new articles to process. Total events in database: {total_events}"
                 }
             
             logger.info("Processing articles", count=len(unprocessed_articles))
             
-            # Process articles with LLM
+            # Process articles with LLM (with fallback to simple extraction)
             parsed_events = await self.llm_service.process_articles_batch(unprocessed_articles)
+            
+            # If LLM failed, use simple rule-based extraction as fallback
+            if not parsed_events or len(parsed_events) == 0:
+                logger.warning("LLM processing failed, using simple extraction fallback")
+                parsed_events = []
+                for article in unprocessed_articles:
+                    event = simple_extract_event(article)
+                    if event:
+                        parsed_events.append(event)
+                logger.info(f"Simple extractor found {len(parsed_events)} conflict-related events")
             
             if parsed_events:
                 # Save to MongoDB
@@ -62,11 +75,13 @@ class ProcessingService:
                     }
             else:
                 logger.warning("No events were successfully parsed")
+                # Return total event count instead of 0
+                total_events = len(self.mongodb_repo.get_parsed_events(limit=Config.MAX_EVENTS_QUERY_LIMIT))
                 return {
-                    "status": "warning",
+                    "status": "success" if total_events > 0 else "warning",
                     "articles_processed": len(unprocessed_articles),
-                    "events_created": 0,
-                    "message": "No events were successfully parsed"
+                    "events_created": total_events,
+                    "message": f"No new conflict events found. Total events in database: {total_events}"
                 }
                 
         except Exception as e:

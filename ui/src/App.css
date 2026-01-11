@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #09090b;
+  color: #fafafa;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-high {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.pulse-critical {
+  animation: pulse-critical 2s ease-in-out infinite;
+}
+
+.pulse-high {
+  animation: pulse-high 2s ease-in-out infinite;
+}

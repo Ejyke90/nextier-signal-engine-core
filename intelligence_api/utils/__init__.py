@@ -1,4 +1,4 @@
 from .config import Config
-from .logger import get_logger
+from .logger import configure_logging, get_logger
 
-__all__ = ["Config", "get_logger"]
+__all__ = ["Config", "configure_logging", "get_logger"]

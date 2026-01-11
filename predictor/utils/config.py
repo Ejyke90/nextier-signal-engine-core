@@ -22,7 +22,7 @@ class Config:
     FUEL_PRICE_THRESHOLD: float = float(os.getenv('FUEL_PRICE_THRESHOLD', '650.0'))
     
     # CORS configuration
-    ALLOWED_ORIGINS: list = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8080,https://nextier.example.com').split(',')
+    ALLOWED_ORIGINS: list = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173,http://localhost:8080,https://nextier.example.com').split(',')
     
     # Service configuration
     SERVICE_NAME: str = os.getenv('SERVICE_NAME', 'predictor')

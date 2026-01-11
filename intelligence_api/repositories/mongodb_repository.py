@@ -20,7 +20,7 @@ class MongoDBRepository:
         try:
             self.client = MongoClient(Config.MONGODB_URL)
             self.db = self.client[Config.MONGODB_DATABASE]
-            self.raw_articles_collection = self.db.raw_articles
+            self.raw_articles_collection = self.db.articles  # Match scraper collection name
             self.parsed_events_collection = self.db.parsed_events
             logger.info("Connected to MongoDB", database=Config.MONGODB_DATABASE)
         except Exception as e:
@@ -57,7 +57,15 @@ class MongoDBRepository:
         """Save parsed events to MongoDB"""
         try:
             if events:
-                result = self.parsed_events_collection.insert_many(events)
+                # Remove any _id fields before inserting (MongoDB will create them)
+                events_to_save = []
+                for event in events:
+                    event_copy = event.copy()
+                    if '_id' in event_copy:
+                        del event_copy['_id']
+                    events_to_save.append(event_copy)
+                
+                result = self.parsed_events_collection.insert_many(events_to_save)
                 logger.info("Saved parsed events", count=len(result.inserted_ids))
             return True
         except PyMongoError as e:

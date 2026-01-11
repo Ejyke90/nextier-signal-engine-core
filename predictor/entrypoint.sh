@@ -52,7 +52,7 @@ echo "from .message_broker import MessageBrokerService" >> predictor/services/__
 echo "from .prediction_service import PredictionService" >> predictor/services/__init__.py
 echo "from .mongodb_repository import MongoDBRepository" > predictor/repositories/__init__.py
 echo "from .config import Config" > predictor/utils/__init__.py
-echo "from .logging import configure_logging, get_logger" >> predictor/utils/__init__.py
+echo "from .logger import configure_logging, get_logger" >> predictor/utils/__init__.py
 
 echo "Starting FastAPI application..."
 exec uvicorn predictor.main:app --host 0.0.0.0 --port 8002 --reload

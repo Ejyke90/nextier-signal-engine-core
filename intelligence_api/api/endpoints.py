@@ -105,21 +105,21 @@ async def analyze_news(
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
-async def analyze_news_sync(
+async def analyze_news(
     processing_service: ProcessingService = Depends(get_processing_service)
 ):
-    """Synchronous analysis of news articles"""
+    """Trigger manual news analysis"""
     try:
         result = await processing_service.process_news_articles()
-        
+        # Use events_created which now includes total count when no new articles
+        events_count = result.get("events_created", 0)
         return AnalysisResponse(
-            status=result["status"],
-            events_processed=result["events_created"],
+            status="success" if events_count > 0 else result["status"],
+            events_processed=events_count,
             message=result["message"]
         )
-        
     except Exception as e:
-        logger.error("Error in synchronous analysis", error=str(e))
+        logger.error("Error in analyze endpoint", error=str(e))
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 

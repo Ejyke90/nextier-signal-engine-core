@@ -30,7 +30,7 @@ class MongoDBRepository:
     
     def save_articles(self, articles: List[Dict[str, Any]]) -> bool:
         """Save articles to MongoDB, avoiding duplicates"""
-        if not self.collection:
+        if self.collection is None:
             logger.warning("Skipping save (demo mode active)")
             return True
             
@@ -53,7 +53,7 @@ class MongoDBRepository:
     
     def get_articles(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Retrieve articles from MongoDB"""
-        if not self.collection:
+        if self.collection is None:
             logger.warning("Using demo data (demo mode active)")
             # Return some demo data
             return [

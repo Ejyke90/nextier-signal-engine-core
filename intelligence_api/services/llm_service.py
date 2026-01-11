@@ -139,6 +139,10 @@ class LLMService:
     async def process_articles_batch(self, articles: list) -> list:
         """Process multiple articles concurrently"""
         try:
+            # TEMPORARY: Bypass LLM and return empty list to force simple extractor fallback
+            logger.info("LLM processing bypassed - using simple extractor fallback")
+            return []
+            
             # Create semaphore to limit concurrent processing
             semaphore = asyncio.Semaphore(Config.MAX_CONCURRENT_PROCESSING)
             

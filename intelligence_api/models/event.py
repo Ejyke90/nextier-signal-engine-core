@@ -7,7 +7,7 @@ class ParsedEvent(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=50)
     state: str = Field(..., min_length=1, max_length=50)
     lga: str = Field(..., min_length=1, max_length=50)
-    severity: str = Field(..., regex=r'^(low|medium|high|critical)$')
+    severity: str = Field(..., pattern=r'^(low|medium|high|critical|Low|Medium|High|Critical)$')
     source_title: str = Field(..., min_length=3, max_length=200)
     source_url: str = Field(..., min_length=10)
     parsed_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -17,7 +17,7 @@ class EventCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=50)
     state: str = Field(..., min_length=1, max_length=50)
     lga: str = Field(..., min_length=1, max_length=50)
-    severity: str = Field(..., regex=r'^(low|medium|high|critical)$')
+    severity: str = Field(..., pattern=r'^(low|medium|high|critical|Low|Medium|High|Critical)$')
     source_title: str = Field(..., min_length=3, max_length=200)
     source_url: str = Field(..., min_length=10)
 

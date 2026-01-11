@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextier Signal Engine - Nigeria Conflict Risk Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { background: #09090b; color: #e0e0e0; overflow-x: hidden; }
+        
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-tertiary: #27272a;
+            --border-color: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --glass-bg: rgba(24, 24, 27, 0.7);
+            --glass-border: rgba(63, 63, 70, 0.5);
+        }
+        
+        /* Bento Grid Layout - 25% / 50% / 25% */
+        .command-grid {
+            display: grid;
+            grid-template-columns: 25% 50% 25%;
+            height: calc(100vh - 60px);
+            gap: 0;
+        }
+        
+        .intel-feed-column {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            height: 100%;
+        }
+        
+        .map-column {
+            position: relative;
+            background: var(--bg-primary);
+            height: 100%;
+        }
+        
+        .prediction-column {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            height: 100%;
+        }
+        
+        /* Glassmorphism Floating Panels */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+        
+        .glass-panel-sm {
+            background: rgba(24, 24, 27, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(63, 63, 70, 0.6);
+            border-radius: 8px;
+        }
+        
+        /* National Threat Status Bar */
+        .threat-status-bar {
+            height: 60px;
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            transition: all 0.5s ease;
+        }
+        
+        .threat-status-bar.status-safe {
+            background: linear-gradient(90deg, #18181b 0%, rgba(34, 197, 94, 0.1) 100%);
+            border-bottom-color: #22c55e;
+        }
+        
+        .threat-status-bar.status-elevated {
+            background: linear-gradient(90deg, #18181b 0%, rgba(251, 191, 36, 0.1) 100%);
+            border-bottom-color: #fbbf24;
+        }
+        
+        .threat-status-bar.status-high {
+            background: linear-gradient(90deg, #18181b 0%, rgba(249, 115, 22, 0.1) 100%);
+            border-bottom-color: #f97316;
+        }
+        
+        .threat-status-bar.status-critical {
+            background: linear-gradient(90deg, #18181b 0%, rgba(239, 68, 68, 0.1) 100%);
+            border-bottom-color: #ef4444;
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); }
+        }
+        
+        .kpi-card {
+            position: relative;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 16px;
+            padding: 2px;
+            background: linear-gradient(135deg, transparent, transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .kpi-card.glow-critical::before {
+            background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+            opacity: 1;
+            animation: glow-pulse-critical 2s ease-in-out infinite;
+        }
+        
+        .kpi-card.glow-high::before {
+            background: linear-gradient(135deg, var(--accent-orange), #ffb84d);
+            opacity: 1;
+            animation: glow-pulse-high 2s ease-in-out infinite;
+        }
+        
+        .kpi-card.glow-medium::before {
+            background: linear-gradient(135deg, #fbbf24, #fcd34d);
+            opacity: 1;
+            animation: glow-pulse-medium 2s ease-in-out infinite;
+        }
+        
+        .kpi-card.glow-safe::before {
+            background: linear-gradient(135deg, var(--accent-green), #5eead4);
+            opacity: 1;
+            animation: glow-pulse-safe 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow-pulse-critical {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 59, 59, 0.4), 0 0 40px rgba(255, 59, 59, 0.2); filter: brightness(1); }
+            50% { box-shadow: 0 0 40px rgba(255, 59, 59, 0.8), 0 0 80px rgba(255, 59, 59, 0.4); filter: brightness(1.2); }
+        }
+        
+        @keyframes glow-pulse-high {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 149, 0, 0.4), 0 0 40px rgba(255, 149, 0, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(255, 149, 0, 0.8), 0 0 80px rgba(255, 149, 0, 0.4); }
+        }
+        
+        @keyframes glow-pulse-medium {
+            0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), 0 0 40px rgba(251, 191, 36, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.8), 0 0 80px rgba(251, 191, 36, 0.4); }
+        }
+        
+        @keyframes glow-pulse-safe {
+            0%, 100% { box-shadow: 0 0 20px rgba(48, 209, 88, 0.4), 0 0 40px rgba(48, 209, 88, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(48, 209, 88, 0.8), 0 0 80px rgba(48, 209, 88, 0.4); }
+        }
+        
+        .threat-level-number {
+            font-size: 5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff3b3b 0%, #ff9500 50%, #fbbf24 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+        
+        .dark-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .dark-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
+        }
+        
+        #map { height: 100%; width: 100%; position: relative; z-index: 1; }
+        .mapboxgl-canvas { outline: none; }
+        .mapboxgl-ctrl-group { background: var(--glass-bg) !important; backdrop-filter: blur(8px); border-radius: 8px !important; }
+        .mapboxgl-ctrl-group button { background: transparent !important; }
+        .mapboxgl-ctrl-group button:hover { background: rgba(255, 255, 255, 0.1) !important; }
+        .mapboxgl-popup-content { background: var(--bg-secondary) !important; color: var(--text-primary) !important; border-radius: 12px; padding: 16px; }
+        .mapboxgl-popup-tip { border-top-color: var(--bg-secondary) !important; }
+        
+        /* Mapbox Pulsing Dot Animations - Severity Based */
+        @keyframes pulse-critical {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse-high {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2.2); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse-medium {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse-low {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Mapbox Marker Styles */
+        .mapbox-marker {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .mapbox-marker:hover {
+            transform: scale(1.2);
+        }
+        
+        /* Mapbox Choropleth Styles */
+        .mapbox-choropleth-popup {
+            min-width: 200px;
+        }
+        
+        .risk-critical { background-color: #dc2626; }
+        .risk-high { background-color: #ea580c; }
+        .risk-medium { background-color: #ca8a04; }
+        .risk-low { background-color: #65a30d; }
+        .risk-minimal { background-color: #16a34a; }
+        
+        .time-slider {
+            position: fixed;
+            bottom: 0;
+            left: 280px;
+            right: 320px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 20px;
+            z-index: 20;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-red);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+        }
+        
+        .intel-feed-item {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent-red);
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .intel-feed-item:hover {
+            background: #2a2a2a;
+            transform: translateX(-8px);
+            box-shadow: 0 4px 20px rgba(255, 59, 59, 0.3);
+        }
+        
+        .intel-feed-item.critical {
+            border-left-color: var(--accent-red);
+            background: linear-gradient(90deg, rgba(255, 59, 59, 0.1) 0%, var(--bg-tertiary) 100%);
+        }
+        
+        .intel-feed-item.high {
+            border-left-color: var(--accent-orange);
+            background: linear-gradient(90deg, rgba(255, 149, 0, 0.1) 0%, var(--bg-tertiary) 100%);
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-verify { background: var(--accent-blue); color: white; }
+        .btn-verify:hover { background: #1976d2; box-shadow: 0 0 15px rgba(33, 150, 243, 0.5); }
+        .btn-deploy { background: var(--accent-red); color: white; }
+        .btn-deploy:hover { background: #d32f2f; box-shadow: 0 0 15px rgba(255, 68, 68, 0.5); }
+        
+        /* Active Prediction Panel */
+        .prediction-panel {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #1a1a2e 100%);
+            border: 2px solid var(--accent-blue);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(10, 132, 255, 0.2);
+        }
+        
+        .prediction-slider {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--accent-blue), #0070f3);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(10, 132, 255, 0.6);
+            transition: all 0.2s ease;
+        }
+        
+        .prediction-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 25px rgba(10, 132, 255, 0.9);
+        }
+        
+        .prediction-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--accent-blue), #0070f3);
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 0 15px rgba(10, 132, 255, 0.6);
+        }
+        
+        .slider-value {
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+        }
+        
+        /* Visual Alert Overlay */
+        .threat-alert-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .threat-alert-overlay.active {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .threat-alert-box {
+            background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+            border: 3px solid #ff0000;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(255, 0, 0, 0.8), 0 0 120px rgba(255, 0, 0, 0.4);
+            animation: alertPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes alertPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(255, 0, 0, 0.8); }
+            50% { transform: scale(1.02); box-shadow: 0 0 80px rgba(255, 0, 0, 1); }
+        }
+        
+        .threat-alert-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: iconBounce 0.5s ease infinite alternate;
+        }
+        
+        @keyframes iconBounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+        
+        .threat-alert-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        
+        .threat-alert-details {
+            font-size: 1.1rem;
+            color: #fca5a5;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .threat-alert-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .threat-alert-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .leaflet-popup-tip { background: var(--bg-secondary); }
+        
+        /* Bento Grid Layout */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+            padding: 0 32px 32px 32px;
+        }
+        
+        .bento-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .bento-item:hover {
+            border-color: rgba(10, 132, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+        
+        .map-container {
+            grid-column: span 8;
+            min-height: 700px;
+        }
+        
+        .charts-container {
+            grid-column: span 4;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+    </style>
+</head>
+<body>
+    <!-- National Threat Status Bar -->
+    <div id="threatStatusBar" class="threat-status-bar status-safe">
+        <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-lg flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">NEXTIER COMMAND & CONTROL</h1>
+                    <p class="text-sm" style="color: var(--text-secondary);">Nigeria Geospatial Intelligence System</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-8">
+            <div class="text-center">
+                <div class="text-xs font-semibold" style="color: var(--text-secondary);">NATIONAL THREAT STATUS</div>
+                <div id="nationalThreatStatus" class="text-2xl font-black text-green-400 mt-1">SAFE</div>
+            </div>
+            <div class="text-center">
+                <div class="text-xs font-semibold" style="color: var(--text-secondary);">AGGREGATE RISK</div>
+                <div id="aggregateRiskScore" class="text-2xl font-black text-white mt-1">--</div>
+            </div>
+            <div class="text-center">
+                <div class="text-xs font-semibold" style="color: var(--text-secondary);">ACTIVE HOTSPOTS</div>
+                <div id="statusBarHotspots" class="text-2xl font-black text-white mt-1">--</div>
+            </div>
+            <div class="text-center">
+                <div class="text-xs font-semibold" style="color: var(--text-secondary);">SYSTEM TIME</div>
+                <div id="statusBarTime" class="text-lg font-mono text-white mt-1">--:--:--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Grid: 25% Intel Feed / 50% Map / 25% Prediction -->
+    <div class="command-grid">
+        <!-- Left Column: Intelligence Feed (25%) -->
+        <div class="intel-feed-column">
+            <div class="p-6 border-b sticky top-0 z-10" style="background: var(--bg-secondary); border-color: var(--border-color);">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <svg class="w-6 h-6 text-red-500 mr-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    LIVE INTELLIGENCE FEED
+                </h3>
+                <p class="text-xs text-gray-400 mt-2">Real-time threat monitoring & raw news</p>
+                <div class="mt-3 flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-red-400 font-semibold">STREAMING</span>
+                </div>
+            </div>
+            
+            <div id="liveIntelFeed" class="p-4">
+                <div class="text-gray-500 text-sm text-center py-8">Loading intelligence feed...</div>
+            </div>
+        </div>
+        
+        <!-- Center Column: GEOINT Map Viewport (50%) -->
+        <div class="map-column">
+            <div id="map" style="width: 100%; height: 100%;"></div>
+            
+            <!-- Floating Glassmorphism Panels on Map -->
+            <div class="absolute top-4 left-4 glass-panel p-4" style="max-width: 300px;">
+                <h4 class="text-sm font-bold text-white mb-3">QUICK INTEL</h4>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Signals:</span>
+                        <span class="text-white font-bold" id="floatingTotalSignals">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Critical LGAs:</span>
+                        <span class="text-red-400 font-bold" id="floatingCriticalLGAs">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">States Affected:</span>
+                        <span class="text-white font-bold" id="floatingStatesAffected">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="absolute top-4 right-4 glass-panel-sm p-3">
+                <select id="mapViewSelector" onchange="changeMapView()" class="bg-transparent text-white text-sm font-semibold outline-none cursor-pointer">
+                    <option value="satellite-streets" class="bg-gray-900">Satellite-Streets</option>
+                    <option value="satellite" class="bg-gray-900">Satellite</option>
+                    <option value="street" class="bg-gray-900">Street Map</option>
+                    <option value="dark" class="bg-gray-900">Dark Mode</option>
+                </select>
+            </div>
+            
+            <div class="absolute bottom-4 left-4 right-4 glass-panel p-3">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center"><span class="w-3 h-3 bg-red-600 rounded-full mr-1.5"></span> Critical</div>
+                        <div class="flex items-center"><span class="w-3 h-3 bg-orange-600 rounded-full mr-1.5"></span> High</div>
+                        <div class="flex items-center"><span class="w-3 h-3 bg-yellow-600 rounded-full mr-1.5"></span> Medium</div>
+                        <div class="flex items-center"><span class="w-3 h-3 bg-green-600 rounded-full mr-1.5"></span> Low</div>
+                    </div>
+                    <div class="font-semibold text-white">774 LGAs Monitored</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Predictive Analytics (25%) -->
+        <div class="prediction-column">
+
+            <div class="p-6 border-b sticky top-0 z-10" style="background: var(--bg-secondary); border-color: var(--border-color);">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <svg class="w-6 h-6 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    PREDICTIVE ANALYTICS
+                </h3>
+                <p class="text-xs text-gray-400 mt-2">Real-time scenario simulation</p>
+                <div class="mt-3 flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-blue-400 font-semibold">ACTIVE</span>
+                </div>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <!-- Fuel Price Index Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-sm font-semibold text-gray-300 flex items-center">
+                            <svg class="w-5 h-5 text-orange-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"></path>
+                            </svg>
+                            Fuel Price Index
+                        </label>
+                        <span class="slider-value" id="fuelPriceValue">100</span>
+                    </div>
+                    <input type="range" id="fuelPriceSlider" class="prediction-slider" min="50" max="200" value="100" step="5" oninput="updatePredictions()">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>₦50/L (Low)</span>
+                        <span>₦200/L (Crisis)</span>
+                    </div>
+                </div>
+                
+                <!-- Social Media Chatter Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-sm font-semibold text-gray-300 flex items-center">
+                            <svg class="w-5 h-5 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                            </svg>
+                            Social Media Chatter
+                        </label>
+                        <span class="slider-value" id="socialMediaValue">50</span>
+                    </div>
+                    <input type="range" id="socialMediaSlider" class="prediction-slider" min="0" max="100" value="50" step="5" oninput="updatePredictions()">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0% (Calm)</span>
+                        <span>100% (Viral)</span>
+                    </div>
+                </div>
+                
+                <!-- Prediction Summary -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-gray-400">Predicted High-Risk:</span>
+                        <span class="text-xl font-bold text-white" id="predictedHighRiskCount">--</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-400">Critical (≥80):</span>
+                        <span class="text-xl font-bold text-red-400" id="predictedCriticalCount">--</span>
+                    </div>
+                </div>
+                
+                <button onclick="resetPredictions()" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Reset to Baseline</span>
+                </button>
+                
+                <!-- Risk Distribution Chart -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold text-white mb-4">RISK DISTRIBUTION</h4>
+                    <div id="riskChart"></div>
+                    <p class="text-xs text-gray-500 mt-3 text-center">Click segments to filter</p>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold text-white mb-3">QUICK ACTIONS</h4>
+                    <div class="space-y-2">
+                        <button onclick="triggerScraping()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                            🔄 Scrape Intel
+                        </button>
+                        <button onclick="triggerAnalysis()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                            📊 Analyze Events
+                        </button>
+                        <button onclick="triggerPrediction()" class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                            ⚡ Calculate Risks
+                        </button>
+                        <button onclick="refreshData()" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                            🔃 Refresh Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Legacy Content for Data Tables -->
+    <div id="legacyContent" style="display: none;">
+        <div class="px-8 pt-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <!-- Global Threat Level -->
+            <div id="kpiGlobalThreat" class="kpi-card">
+                <div class="text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Global Threat Level</p>
+                    <div class="threat-level-number" id="globalThreatLevel">--</div>
+                    <p class="text-xs text-gray-500 mt-2">Out of 100</p>
+                    <div class="mt-4 h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="threatLevelBar" class="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Hotspots -->
+            <div id="kpiHotspots" class="kpi-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Hotspots</p>
+                        <p class="text-4xl font-bold text-white mt-3" id="activeHotspots">--</p>
+                        <p class="text-xs text-gray-500 mt-1">High-risk LGAs</p>
+                    </div>
+                    <div class="w-14 h-14 bg-red-900 bg-opacity-30 rounded-xl flex items-center justify-center">
+                        <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 24h Change -->
+            <div id="kpiChange" class="kpi-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">24h Change</p>
+                        <p class="text-4xl font-bold text-white mt-3" id="change24h">--</p>
+                        <p class="text-xs text-gray-500 mt-1" id="change24hPercent">-- %</p>
+                    </div>
+                    <div class="w-14 h-14 bg-orange-900 bg-opacity-30 rounded-xl flex items-center justify-center">
+                        <svg class="w-7 h-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Fatalities -->
+            <div id="kpiFatalities" class="kpi-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Est. Fatalities</p>
+                        <p class="text-4xl font-bold text-red-400 mt-3" id="totalFatalities">--</p>
+                        <p class="text-xs text-gray-500 mt-1">Last 30 days</p>
+                    </div>
+                    <div class="w-14 h-14 bg-red-900 bg-opacity-30 rounded-xl flex items-center justify-center">
+                        <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="px-8 mb-6">
+            <div class="dark-card p-4" style="display: none;">
+                <div class="flex flex-wrap gap-3 items-center">
+                <button onclick="triggerScraping()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Scrape Intel</span>
+                </button>
+                
+                <button onclick="triggerAnalysis()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Analyze Events</span>
+                </button>
+                
+                <button onclick="triggerPrediction()" class="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <span>Calculate Risks</span>
+                </button>
+                
+                <button onclick="openStressTest()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Stress Test</span>
+                </button>
+                
+                <button onclick="refreshData()" class="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2.5 rounded-lg flex items-center space-x-2 transition-all font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Refresh</span>
+                </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bento Grid Layout -->
+        <div class="bento-grid">
+            <!-- Nigeria Intelligence Map - 60% (8 columns) -->
+            <div class="map-container">
+                <div class="bento-item h-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-white">Nigeria Risk Heatmap</h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2 text-sm text-gray-400">
+                                <div class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                                <span>Active Zones</span>
+                            </div>
+                            <select id="mapViewSelector" onchange="changeMapView()" class="bg-gray-800 text-gray-300 text-sm rounded-lg px-3 py-1.5 border border-gray-700">
+                                <option value="dark">Dark Mode</option>
+                                <option value="satellite-hybrid">Satellite + Terrain</option>
+                                <option value="satellite">Satellite</option>
+                                <option value="street">Street Map</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="map"></div>
+                    <div class="mt-4 flex items-center justify-between text-xs text-gray-500">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center"><span class="w-3 h-3 bg-red-600 rounded-full mr-1.5"></span> Critical</div>
+                            <div class="flex items-center"><span class="w-3 h-3 bg-orange-600 rounded-full mr-1.5"></span> High</div>
+                            <div class="flex items-center"><span class="w-3 h-3 bg-yellow-600 rounded-full mr-1.5"></span> Medium</div>
+                            <div class="flex items-center"><span class="w-3 h-3 bg-green-600 rounded-full mr-1.5"></span> Low</div>
+                        </div>
+                        <div class="font-semibold">774 LGAs monitored</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Container - 40% (4 columns) -->
+            <div class="charts-container">
+                <!-- Risk Distribution Chart -->
+                <div class="bento-item">
+                    <h3 class="text-lg font-bold text-white mb-4">Risk Distribution</h3>
+                    <div id="riskChart"></div>
+                    <p class="text-xs text-gray-500 mt-3 text-center">Click segments to filter map</p>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="bento-item">
+                    <h3 class="text-lg font-bold text-white mb-4">Quick Stats</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                            <span class="text-sm text-gray-400">Total Signals</span>
+                            <span class="text-lg font-bold text-white" id="totalSignals">--</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                            <span class="text-sm text-gray-400">States Affected</span>
+                            <span class="text-lg font-bold text-white" id="statesAffected">--</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                            <span class="text-sm text-gray-400">Avg Risk Score</span>
+                            <span class="text-lg font-bold text-white" id="avgRiskScore">--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Prediction Panel -->
+                <div class="prediction-panel">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center">
+                            <svg class="w-6 h-6 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Active Prediction
+                        </h3>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            <span class="text-xs text-blue-400 font-semibold">REAL-TIME</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-6">Adjust parameters to see instant predictive risk changes</p>
+                    
+                    <div class="space-y-6">
+                        <!-- Fuel Price Index Slider -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="text-sm font-semibold text-gray-300 flex items-center">
+                                    <svg class="w-5 h-5 text-orange-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"></path>
+                                    </svg>
+                                    Fuel Price Index
+                                </label>
+                                <span class="slider-value" id="fuelPriceValue">100</span>
+                            </div>
+                            <input type="range" id="fuelPriceSlider" class="prediction-slider" min="50" max="200" value="100" step="5" oninput="updatePredictions()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>₦50/L (Low)</span>
+                                <span>₦200/L (Crisis)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Media Chatter Slider -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="text-sm font-semibold text-gray-300 flex items-center">
+                                    <svg class="w-5 h-5 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                    </svg>
+                                    Social Media Chatter
+                                </label>
+                                <span class="slider-value" id="socialMediaValue">50</span>
+                            </div>
+                            <input type="range" id="socialMediaSlider" class="prediction-slider" min="0" max="100" value="50" step="5" oninput="updatePredictions()">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>0% (Calm)</span>
+                                <span>100% (Viral)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Prediction Summary -->
+                        <div class="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-400">Predicted High-Risk LGAs:</span>
+                                <span class="text-xl font-bold text-white" id="predictedHighRiskCount">--</span>
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-sm text-gray-400">Critical Threshold (≥80):</span>
+                                <span class="text-xl font-bold text-red-400" id="predictedCriticalCount">--</span>
+                            </div>
+                        </div>
+                        
+                        <button onclick="resetPredictions()" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Reset to Baseline</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Events Table - Full Width -->
+            <div class="bento-item" style="grid-column: span 12;">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-white">Recent Risk Signals</h2>
+                    <div class="flex items-center space-x-3">
+                        <input type="text" id="filterInput" placeholder="Filter by location..." class="bg-gray-800 text-gray-300 px-4 py-2 rounded-lg border border-gray-700 text-sm" onkeyup="filterTable()">
+                        <select id="riskFilter" onchange="filterTable()" class="bg-gray-800 text-gray-300 px-4 py-2 rounded-lg border border-gray-700 text-sm">
+                        <option value="">All Risk Levels</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y" style="border-color: var(--border-color);">
+                        <thead style="background: var(--bg-tertiary);">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Event Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Risk Score</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Trigger Reason</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="events-table" class="divide-y" style="border-color: var(--border-color);">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Slider -->
+    <div class="time-slider">
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-semibold text-gray-300">Conflict Evolution Timeline</div>
+            <div class="text-sm text-gray-400">
+                <span id="timeSliderDate">Today</span>
+                <button onclick="playTimeline()" id="playBtn" class="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-all">
+                    ▶ Play
+                </button>
+            </div>
+        </div>
+        <input type="range" id="timeSlider" min="0" max="30" value="30" oninput="updateTimelineDate(this.value)">
+        <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>30 days ago</span>
+            <span>Today</span>
+        </div>
+    </div>
+
+    <script>
+        // API endpoints
+        const API_BASE = '';
+        const SCRAPER_API = 'http://localhost:8000';
+        const INTELLIGENCE_API = 'http://localhost:8001';
+        const PREDICTOR_API = 'http://localhost:8002';
+
+        // Mapbox Access Token (Replace with your token)
+        mapboxgl.accessToken = 'pk.eyJ1IjoibmV4dGllciIsImEiOiJjbTBkZXh5ZWowMDFrMmtzZGh5cWp6MWJqIn0.placeholder';
+        
+        // Global variables
+        let map;
+        let riskChart;
+        let markers = [];
+        let allSignals = [];
+        let baselineSignals = [];
+        let filteredRiskLevel = null;
+        let timelineInterval = null;
+        let currentMapView = 'satellite-streets';
+        let lgaRiskData = {};
+        let pulsingDots = new Map();
+        
+        // Prediction state
+        let predictionState = {
+            fuelPriceIndex: 100,
+            socialMediaChatter: 50,
+            isActive: false
+        };
+
+        // Create pulsing dot image for Mapbox
+        function createPulsingDot(size, color, pulseSpeed) {
+            return {
+                width: size,
+                height: size,
+                data: new Uint8Array(size * size * 4),
+                
+                onAdd: function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = this.width;
+                    canvas.height = this.height;
+                    this.context = canvas.getContext('2d');
+                },
+                
+                render: function() {
+                    const duration = pulseSpeed; // milliseconds
+                    const t = (performance.now() % duration) / duration;
+                    
+                    const radius = (size / 2) * 0.3;
+                    const outerRadius = (size / 2) * 0.7 * t + radius;
+                    const context = this.context;
+                    
+                    // Clear canvas
+                    context.clearRect(0, 0, this.width, this.height);
+                    
+                    // Draw outer pulsing circle
+                    context.beginPath();
+                    context.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+                    context.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${1 - t})`;
+                    context.fill();
+                    
+                    // Draw inner solid circle
+                    context.beginPath();
+                    context.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+                    context.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 1)`;
+                    context.strokeStyle = 'white';
+                    context.lineWidth = 2;
+                    context.fill();
+                    context.stroke();
+                    
+                    // Update image data
+                    this.data = context.getImageData(0, 0, this.width, this.height).data;
+                    
+                    // Trigger map repaint
+                    map.triggerRepaint();
+                    
+                    return true;
+                }
+            };
+        }
+
+        // Initialize Mapbox GL JS map
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                center: [8.6753, 9.0820],
+                zoom: 5.5,
+                pitch: 0,
+                bearing: 0
+            });
+            
+            // Add navigation controls
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+            
+            // Wait for map to load before adding layers
+            map.on('load', function() {
+                console.log('Mapbox map loaded successfully');
+                
+                // Add pulsing dot images for different severity levels
+                addPulsingDotImages();
+                
+                // Initialize choropleth layer
+                initChoroplethLayer();
+                
+                // Add empty source for markers
+                map.addSource('threat-markers', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    }
+                });
+            });
+        }
+        
+        // Add pulsing dot images for different severity levels
+        function addPulsingDotImages() {
+            // Critical: Fast pulse (800ms), Deep Red
+            map.addImage('pulsing-dot-critical', createPulsingDot(100, {r: 220, g: 38, b: 38}, 800), {pixelRatio: 2});
+            
+            // High: Medium-fast pulse (1200ms), Orange-Red
+            map.addImage('pulsing-dot-high', createPulsingDot(100, {r: 234, g: 88, b: 12}, 1200), {pixelRatio: 2});
+            
+            // Medium: Medium pulse (1600ms), Yellow
+            map.addImage('pulsing-dot-medium', createPulsingDot(100, {r: 202, g: 138, b: 4}, 1600), {pixelRatio: 2});
+            
+            // Low: Slow pulse (2000ms), Green
+            map.addImage('pulsing-dot-low', createPulsingDot(100, {r: 101, g: 163, b: 13}, 2000), {pixelRatio: 2});
+        }
+        
+        // Initialize choropleth layer for LGA-level risk visualization
+        function initChoroplethLayer() {
+            // Add LGA choropleth source (will be populated with actual data)
+            map.addSource('lga-choropleth', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: []
+                }
+            });
+            
+            // Add fill layer with transparent-to-crimson gradient
+            map.addLayer({
+                id: 'lga-fill',
+                type: 'fill',
+                source: 'lga-choropleth',
+                paint: {
+                    'fill-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'risk_score'],
+                        0, 'rgba(255, 255, 255, 0)',      // Transparent for 0
+                        20, 'rgba(255, 140, 0, 0.3)',     // Light orange
+                        40, 'rgba(255, 69, 0, 0.5)',      // Orange-red
+                        60, 'rgba(220, 20, 60, 0.7)',     // Crimson
+                        80, 'rgba(139, 0, 0, 0.85)',      // Deep crimson
+                        100, 'rgba(139, 0, 0, 1)'         // Full deep crimson
+                    ],
+                    'fill-opacity': 0.7
+                }
+            });
+            
+            // Add outline layer
+            map.addLayer({
+                id: 'lga-outline',
+                type: 'line',
+                source: 'lga-choropleth',
+                paint: {
+                    'line-color': '#27272a',
+                    'line-width': 1,
+                    'line-opacity': 0.8
+                }
+            });
+            
+            // Add hover effect
+            map.on('mouseenter', 'lga-fill', function() {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            
+            map.on('mouseleave', 'lga-fill', function() {
+                map.getCanvas().style.cursor = '';
+            });
+            
+            // Add click handler for LGA polygons
+            map.on('click', 'lga-fill', function(e) {
+                const properties = e.features[0].properties;
+                
+                new mapboxgl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setHTML(`
+                        <div class="mapbox-choropleth-popup">
+                            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">${properties.lga_name}</h3>
+                            <div style="font-size: 13px; line-height: 1.6;">
+                                <strong>State:</strong> ${properties.state}<br>
+                                <strong>Risk Score:</strong> <span style="color: ${getChoroplethColor(properties.risk_score)}; font-weight: bold;">${properties.risk_score || 0}</span><br>
+                                <strong>Events:</strong> ${properties.event_count || 0}<br>
+                                <strong>Status:</strong> ${properties.risk_level || 'Unknown'}
+                            </div>
+                        </div>
+                    `)
+                    .addTo(map);
+            });
+        }
+        
+        // Get color for choropleth based on risk score
+        function getChoroplethColor(riskScore) {
+            if (!riskScore || riskScore === 0) return 'rgba(255, 255, 255, 0.1)';
+            if (riskScore >= 80) return '#8B0000';
+            if (riskScore >= 60) return '#DC143C';
+            if (riskScore >= 40) return '#FF4500';
+            if (riskScore >= 20) return '#FF8C00';
+            return '#FFA500';
+        }
+        
+        // FlyTo function for intelligence feed navigation
+        function flyToLocation(lng, lat, zoom = 10) {
+            map.flyTo({
+                center: [lng, lat],
+                zoom: zoom,
+                duration: 2000,
+                essential: true,
+                curve: 1.42,
+                easing: function(t) {
+                    return t * (2 - t);
+                }
+            });
+        }
+        
+        // Update choropleth layer with risk data
+        function updateChoroplethLayer() {
+            // Aggregate risk data by LGA
+            lgaRiskData = {};
+            allSignals.forEach(signal => {
+                const key = `${signal.state}-${signal.lga}`;
+                if (!lgaRiskData[key]) {
+                    lgaRiskData[key] = {
+                        state: signal.state,
+                        lga: signal.lga,
+                        total_risk: 0,
+                        count: 0,
+                        max_risk: 0
+                    };
+                }
+                lgaRiskData[key].total_risk += signal.risk_score;
+                lgaRiskData[key].count++;
+                lgaRiskData[key].max_risk = Math.max(lgaRiskData[key].max_risk, signal.risk_score);
+            });
+            
+            // Calculate average risk scores
+            Object.keys(lgaRiskData).forEach(key => {
+                lgaRiskData[key].avg_risk = Math.round(lgaRiskData[key].total_risk / lgaRiskData[key].count);
+            });
+            
+            // Note: In production, you would load actual LGA GeoJSON and update colors
+            // For now, we'll use point-based visualization with clustering
+        }
+        
+        // Change map style (Mapbox GL JS)
+        function changeMapView() {
+            const view = document.getElementById('mapViewSelector').value;
+            
+            let styleUrl;
+            switch(view) {
+                case 'satellite-streets':
+                    styleUrl = 'mapbox://styles/mapbox/satellite-streets-v12';
+                    break;
+                case 'satellite':
+                    styleUrl = 'mapbox://styles/mapbox/satellite-v9';
+                    break;
+                case 'street':
+                    styleUrl = 'mapbox://styles/mapbox/streets-v12';
+                    break;
+                case 'dark':
+                    styleUrl = 'mapbox://styles/mapbox/dark-v11';
+                    break;
+                default:
+                    styleUrl = 'mapbox://styles/mapbox/satellite-streets-v12';
+            }
+            
+            map.setStyle(styleUrl);
+            currentMapView = view;
+            
+            // Re-add layers after style change
+            map.once('style.load', function() {
+                addPulsingDotImages();
+                initChoroplethLayer();
+                updateMap();
+            });
+        }
+
+        // Initialize interactive risk chart with dark theme
+        function initRiskChart() {
+            const options = {
+                series: [0, 0, 0, 0],
+                chart: {
+                    type: 'donut',
+                    height: 350,
+                    fontFamily: 'Inter, sans-serif',
+                    background: 'transparent',
+                    toolbar: { show: false },
+                    events: {
+                        dataPointSelection: function(event, chartContext, config) {
+                            const labels = ['Critical', 'High', 'Medium', 'Low'];
+                            const selectedLevel = labels[config.dataPointIndex];
+                            filterMapByRiskLevel(selectedLevel);
+                        }
+                    }
+                },
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                colors: ['#DC2626', '#EA580C', '#EAB308', '#16A34A'],
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true,
+                                name: {
+                                    show: true,
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#9CA3AF'
+                                },
+                                value: {
+                                    show: true,
+                                    fontSize: '24px',
+                                    fontWeight: 700,
+                                    color: '#E5E7EB',
+                                    formatter: function(val) { return val; }
+                                },
+                                total: {
+                                    show: true,
+                                    label: 'Total Signals',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#9CA3AF',
+                                    formatter: function(w) {
+                                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: { enabled: false },
+                legend: {
+                    position: 'bottom',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    labels: { colors: '#9CA3AF' },
+                    markers: { width: 10, height: 10, radius: 10 }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: { formatter: function(val) { return val + ' signals'; } }
+                },
+                states: {
+                    hover: { filter: { type: 'lighten', value: 0.15 } },
+                    active: { filter: { type: 'darken', value: 0.15 } }
+                }
+            };
+            
+            riskChart = new ApexCharts(document.querySelector('#riskChart'), options);
+            riskChart.render();
+        }
+        
+        // Filter map by risk level (interactive chart)
+        function filterMapByRiskLevel(level) {
+            if (filteredRiskLevel === level) {
+                filteredRiskLevel = null;
+                showNotification('Filter cleared', 'info');
+            } else {
+                filteredRiskLevel = level;
+                showNotification(`Filtering by ${level} risk`, 'info');
+            }
+            updateMap();
+        }
+
+        // API call helper
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                showNotification('API call failed: ' + error.message, 'error');
+                return null;
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const colors = {
+                info: 'bg-blue-500',
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Trigger scraping
+        async function triggerScraping() {
+            showNotification('Starting news scraping...', 'info');
+            const result = await apiCall(`${SCRAPER_API}/api/v1/scrape`, { method: "POST" });
+            if (result) {
+                showNotification(`${result.message}`, 'success');
+                setTimeout(refreshData, 2000);
+            }
+        }
+
+        // Trigger analysis
+        async function triggerAnalysis() {
+            showNotification('Starting event analysis...', 'info');
+            const result = await apiCall(`${INTELLIGENCE_API}/api/v1/analyze`, { method: "POST" });
+            if (result) {
+                showNotification('Analysis started', 'success');
+                setTimeout(refreshData, 5000);
+            }
+        }
+
+        // Trigger prediction
+        async function triggerPrediction() {
+            showNotification('Calculating risk scores...', 'info');
+            const result = await apiCall(`${PREDICTOR_API}/api/v1/predict`, { method: "POST" });
+            if (result) {
+                showNotification('Risk calculation started', 'success');
+                setTimeout(refreshData, 5000);
+            }
+        }
+
+        // Update National Threat Status Bar
+        function updateNationalThreatStatus(avgRisk, hotspots) {
+            const statusBar = document.getElementById('threatStatusBar');
+            const statusText = document.getElementById('nationalThreatStatus');
+            const aggregateScore = document.getElementById('aggregateRiskScore');
+            const statusBarHotspots = document.getElementById('statusBarHotspots');
+            const statusBarTime = document.getElementById('statusBarTime');
+            
+            // Update values
+            aggregateScore.textContent = Math.round(avgRisk);
+            statusBarHotspots.textContent = hotspots;
+            statusBarTime.textContent = new Date().toLocaleTimeString();
+            
+            // Remove all status classes
+            statusBar.classList.remove('status-safe', 'status-elevated', 'status-high', 'status-critical');
+            
+            // Determine status based on aggregate risk and hotspots
+            if (avgRisk >= 70 || hotspots >= 15) {
+                statusBar.classList.add('status-critical');
+                statusText.textContent = 'CRITICAL';
+                statusText.className = 'text-2xl font-black text-red-400 mt-1';
+            } else if (avgRisk >= 50 || hotspots >= 10) {
+                statusBar.classList.add('status-high');
+                statusText.textContent = 'HIGH';
+                statusText.className = 'text-2xl font-black text-orange-400 mt-1';
+            } else if (avgRisk >= 30 || hotspots >= 5) {
+                statusBar.classList.add('status-elevated');
+                statusText.textContent = 'ELEVATED';
+                statusText.className = 'text-2xl font-black text-yellow-400 mt-1';
+            } else {
+                statusBar.classList.add('status-safe');
+                statusText.textContent = 'SAFE';
+                statusText.className = 'text-2xl font-black text-green-400 mt-1';
+            }
+        }
+        
+        // Update KPI card glow based on threat level
+        function updateKPIGlow(hotspots, avgRisk) {
+            const kpiGlobal = document.getElementById('kpiGlobalThreat');
+            const kpiHotspots = document.getElementById('kpiHotspots');
+            const kpiChange = document.getElementById('kpiChange');
+            const kpiFatalities = document.getElementById('kpiFatalities');
+            
+            // Remove all glow classes
+            [kpiGlobal, kpiHotspots, kpiChange, kpiFatalities].forEach(el => {
+                el.classList.remove('glow-critical', 'glow-high', 'glow-medium', 'glow-safe');
+            });
+            
+            // Apply glow based on conditions
+            if (hotspots > 10 || avgRisk > 75) {
+                kpiGlobal.classList.add('glow-critical');
+                kpiHotspots.classList.add('glow-critical');
+                kpiFatalities.classList.add('glow-critical');
+            } else if (hotspots > 5 || avgRisk > 50) {
+                kpiGlobal.classList.add('glow-high');
+                kpiHotspots.classList.add('glow-high');
+                kpiFatalities.classList.add('glow-high');
+            } else if (hotspots > 2 || avgRisk > 30) {
+                kpiGlobal.classList.add('glow-medium');
+                kpiHotspots.classList.add('glow-medium');
+            } else {
+                kpiGlobal.classList.add('glow-safe');
+            }
+        }
+
+        // Refresh all data
+        async function refreshData() {
+            await Promise.all([
+                updateStatusCards(),
+                updateRiskSignals(),
+                updateMap(),
+                updateChart(),
+                updateLiveIntelFeed()
+            ]);
+            updateCurrentTime();
+        }
+        
+        // Update live intelligence feed with flyTo navigation
+        async function updateLiveIntelFeed() {
+            const signals = await apiCall(`${PREDICTOR_API}/api/v1/signals`);
+            if (!signals || !signals.signals) return;
+
+            const criticalSignals = signals.signals
+                .filter(s => s.risk_level === 'Critical' || s.risk_level === 'High')
+                .slice(0, 20);
+
+            const feed = document.getElementById('liveIntelFeed');
+            
+            if (criticalSignals.length === 0) {
+                feed.innerHTML = '<div class="text-gray-500 text-sm text-center py-8">No critical signals</div>';
+                return;
+            }
+
+            const stateCoordinates = {
+                'Borno': [13.1500, 11.8333], 'Adamawa': [12.5000, 9.3333], 'Yobe': [11.9667, 12.2941],
+                'Sokoto': [5.2339, 13.0622], 'Kebbi': [4.2000, 11.4500], 'Zamfara': [6.6667, 12.1667],
+                'Katsina': [7.6008, 12.9908], 'Kaduna': [7.4383, 10.5222], 'Niger': [5.5833, 9.9333],
+                'Plateau': [9.5179, 9.2182], 'Taraba': [10.7667, 7.9833], 'Benue': [8.7500, 7.3333],
+                'Lagos': [3.3792, 6.5244], 'Abuja': [7.3986, 9.0765], 'unknown': [8.6753, 9.0820]
+            };
+
+            feed.innerHTML = criticalSignals.map((signal, index) => {
+                const coords = stateCoordinates[signal.state] || stateCoordinates['unknown'];
+                return `
+                    <div class="intel-feed-item ${signal.risk_level.toLowerCase()}" 
+                         onclick="flyToLocation(${coords[0]}, ${coords[1]}, 9)" 
+                         style="cursor: pointer;">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-white mb-1">${signal.event_type.toUpperCase()}</div>
+                                <div class="text-xs text-gray-400">
+                                    <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    ${signal.state}, ${signal.lga}
+                                </div>
+                            </div>
+                            <div class="text-2xl font-black ${signal.risk_level === 'Critical' ? 'text-red-400' : 'text-orange-400'}">
+                                ${signal.risk_score}
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 mb-3">
+                            <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                            </svg>
+                            ${new Date(signal.calculated_at).toLocaleString()}
+                        </div>
+                        <div class="text-xs text-gray-400 mb-3 line-clamp-2">
+                            ${signal.trigger_reason || 'Standard risk calculation'}
+                        </div>
+                        <div class="flex space-x-2" onclick="event.stopPropagation();">
+                            <button class="action-btn btn-verify flex-1" onclick="verifySignal(${index})">
+                                ✓ Verify
+                            </button>
+                            <button class="action-btn btn-deploy flex-1" onclick="deployResponse(${index})">
+                                ⚡ Deploy
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Action button handlers
+        function verifySignal(index) {
+            showNotification('Signal verified by intelligence team', 'success');
+        }
+        
+        function deployResponse(index) {
+            showNotification('Response team deployed to location', 'warning');
+        }
+        
+        // Time slider functions
+        function updateTimelineDate(value) {
+            const daysAgo = 30 - parseInt(value);
+            const date = new Date();
+            date.setDate(date.getDate() - daysAgo);
+            document.getElementById('timeSliderDate').textContent = 
+                daysAgo === 0 ? 'Today' : `${daysAgo} days ago`;
+        }
+        
+        function playTimeline() {
+            const btn = document.getElementById('playBtn');
+            const slider = document.getElementById('timeSlider');
+            
+            if (timelineInterval) {
+                clearInterval(timelineInterval);
+                timelineInterval = null;
+                btn.textContent = '▶ Play';
+            } else {
+                btn.textContent = '⏸ Pause';
+                timelineInterval = setInterval(() => {
+                    let val = parseInt(slider.value);
+                    if (val > 0) {
+                        slider.value = val - 1;
+                        updateTimelineDate(slider.value);
+                    } else {
+                        clearInterval(timelineInterval);
+                        timelineInterval = null;
+                        btn.textContent = '▶ Play';
+                    }
+                }, 500);
+            }
+        }
+        
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+
+        // Update status cards with new metrics
+        async function updateStatusCards() {
+            try {
+                const signals = await apiCall(`${PREDICTOR_API}/api/v1/signals`);
+                if (!signals || !signals.signals) return;
+
+                allSignals = signals.signals;
+                
+                // Store baseline signals for predictions (only if not already set)
+                if (baselineSignals.length === 0) {
+                    baselineSignals = JSON.parse(JSON.stringify(signals.signals));
+                }
+
+                // Global Threat Level (average of all risk scores)
+                const avgRisk = allSignals.length > 0 
+                    ? allSignals.reduce((sum, s) => sum + s.risk_score, 0) / allSignals.length 
+                    : 0;
+                document.getElementById('globalThreatLevel').textContent = Math.round(avgRisk);
+                document.getElementById('threatLevelBar').style.width = avgRisk + '%';
+
+                // 24h Change (mock - would need historical data)
+                const change = Math.floor(Math.random() * 20) - 10;
+                document.getElementById('change24h').textContent = (change > 0 ? '+' : '') + change;
+                document.getElementById('change24hPercent').textContent = (change > 0 ? '+' : '') + (change * 0.5).toFixed(1) + '%';
+
+                // Active Hotspots (unique LGAs with high/critical risk)
+                const hotspots = new Set(
+                    allSignals
+                        .filter(s => s.risk_level === 'Critical' || s.risk_level === 'High')
+                        .map(s => `${s.state}-${s.lga}`)
+                ).size;
+                document.getElementById('activeHotspots').textContent = hotspots;
+
+                // Total Fatalities (mock estimation based on risk scores)
+                const estimatedFatalities = Math.floor(allSignals.reduce((sum, s) => {
+                    if (s.event_type === 'clash' || s.event_type === 'violence') {
+                        return sum + (s.risk_score * 0.3);
+                    }
+                    return sum;
+                }, 0));
+                document.getElementById('totalFatalities').textContent = estimatedFatalities.toLocaleString();
+
+                // Quick Stats
+                document.getElementById('totalSignals').textContent = allSignals.length;
+                const uniqueStates = new Set(allSignals.map(s => s.state)).size;
+                document.getElementById('statesAffected').textContent = uniqueStates;
+                document.getElementById('avgRiskScore').textContent = Math.round(avgRisk);
+
+                // Update KPI glow effects
+                updateKPIGlow(hotspots, avgRisk);
+                
+                // Update National Threat Status Bar
+                updateNationalThreatStatus(avgRisk, hotspots);
+                
+                // Update floating glassmorphism panels
+                document.getElementById('floatingTotalSignals').textContent = allSignals.length;
+                document.getElementById('floatingCriticalLGAs').textContent = allSignals.filter(s => s.risk_score >= 80).length;
+                document.getElementById('floatingStatesAffected').textContent = uniqueStates;
+                
+                // Initialize prediction summary if not active
+                if (!predictionState.isActive) {
+                    document.getElementById('predictedHighRiskCount').textContent = hotspots;
+                    const criticalCount = allSignals.filter(s => s.risk_score >= 80).length;
+                    document.getElementById('predictedCriticalCount').textContent = criticalCount;
+                }
+
+            } catch (error) {
+                console.error('Error updating status cards:', error);
+            }
+        }
+
+        // Update risk signals table with trigger reasons
+        async function updateRiskSignals() {
+            const signals = await apiCall(`${PREDICTOR_API}/api/v1/signals`);
+            if (!signals || !signals.signals) return;
+
+            const tbody = document.getElementById('events-table');
+            tbody.innerHTML = '';
+
+            signals.signals.slice(0, 15).forEach(signal => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-800 transition-colors';
+                row.dataset.riskLevel = signal.risk_level;
+                row.dataset.location = `${signal.state}, ${signal.lga}`.toLowerCase();
+                
+                const riskColor = {
+                    'Critical': 'text-red-400 font-bold',
+                    'High': 'text-orange-400 font-semibold',
+                    'Medium': 'text-yellow-400',
+                    'Low': 'text-green-400',
+                    'Minimal': 'text-blue-400'
+                }[signal.risk_level] || 'text-gray-400';
+
+                const triggerReason = signal.trigger_reason || 'Standard risk calculation';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
+                        ${signal.event_type}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        ${signal.state}, ${signal.lga}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="${riskColor}">${signal.risk_score} - ${signal.risk_level}</span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-400 max-w-md truncate" title="${triggerReason}">
+                        ${triggerReason}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${new Date(signal.calculated_at).toLocaleString()}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Filter table
+        function filterTable() {
+            const filterText = document.getElementById('filterInput').value.toLowerCase();
+            const riskLevel = document.getElementById('riskFilter').value;
+            const rows = document.querySelectorAll('#events-table tr');
+            
+            rows.forEach(row => {
+                const location = row.dataset.location || '';
+                const level = row.dataset.riskLevel || '';
+                const matchesText = location.includes(filterText);
+                const matchesLevel = !riskLevel || level === riskLevel;
+                row.style.display = (matchesText && matchesLevel) ? '' : 'none';
+            });
+        }
+
+        // Update map with Mapbox GL JS pulsing dots
+        async function updateMap() {
+            if (!map.isStyleLoaded()) {
+                console.log('Map style not loaded yet, waiting...');
+                return;
+            }
+            
+            const signals = await apiCall(`${PREDICTOR_API}/api/v1/signals`);
+            if (!signals || !signals.signals) return;
+
+            // Update choropleth layer data
+            updateChoroplethLayer();
+
+            const stateCoordinates = {
+                'Borno': [13.1500, 11.8333], 'Adamawa': [12.5000, 9.3333], 'Yobe': [11.9667, 12.2941],
+                'Sokoto': [5.2339, 13.0622], 'Kebbi': [4.2000, 11.4500], 'Zamfara': [6.6667, 12.1667],
+                'Katsina': [7.6008, 12.9908], 'Kaduna': [7.4383, 10.5222], 'Niger': [5.5833, 9.9333],
+                'Plateau': [9.5179, 9.2182], 'Taraba': [10.7667, 7.9833], 'Benue': [8.7500, 7.3333],
+                'Lagos': [3.3792, 6.5244], 'Abuja': [7.3986, 9.0765], 'unknown': [8.6753, 9.0820]
+            };
+
+            let displaySignals = signals.signals;
+            if (filteredRiskLevel) {
+                displaySignals = displaySignals.filter(s => s.risk_level === filteredRiskLevel);
+            }
+
+            // Create GeoJSON features for pulsing dots
+            const features = displaySignals.map(signal => {
+                const coords = stateCoordinates[signal.state] || stateCoordinates['unknown'];
+                const eventTime = new Date(signal.calculated_at);
+                const hoursDiff = (new Date() - eventTime) / (1000 * 60 * 60);
+                const isRecent = hoursDiff < 2;
+                
+                // Determine pulsing dot image based on risk level
+                let iconImage;
+                if (signal.risk_level === 'Critical') iconImage = 'pulsing-dot-critical';
+                else if (signal.risk_level === 'High') iconImage = 'pulsing-dot-high';
+                else if (signal.risk_level === 'Medium') iconImage = 'pulsing-dot-medium';
+                else iconImage = 'pulsing-dot-low';
+                
+                return {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coords
+                    },
+                    properties: {
+                        id: signal.id || Math.random().toString(),
+                        event_type: signal.event_type,
+                        state: signal.state,
+                        lga: signal.lga,
+                        risk_score: signal.risk_score,
+                        risk_level: signal.risk_level,
+                        calculated_at: signal.calculated_at,
+                        trigger_reason: signal.trigger_reason || 'Standard risk calculation',
+                        inflation: signal.inflation,
+                        is_recent: isRecent,
+                        icon_image: iconImage,
+                        is_predicted: signal.is_predicted || false
+                    }
+                };
+            });
+
+            // Update threat markers source
+            if (map.getSource('threat-markers')) {
+                map.getSource('threat-markers').setData({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+            }
+
+            // Add symbol layer if not exists
+            if (!map.getLayer('threat-markers-layer')) {
+                map.addLayer({
+                    id: 'threat-markers-layer',
+                    type: 'symbol',
+                    source: 'threat-markers',
+                    layout: {
+                        'icon-image': ['get', 'icon_image'],
+                        'icon-size': 0.25,
+                        'icon-allow-overlap': true
+                    }
+                });
+                
+                // Add click handler for markers
+                map.on('click', 'threat-markers-layer', function(e) {
+                    const properties = e.features[0].properties;
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    
+                    const color = {
+                        'Critical': '#dc2626', 'High': '#ea580c', 'Medium': '#ca8a04',
+                        'Low': '#65a30d', 'Minimal': '#16a34a'
+                    }[properties.risk_level] || '#6b7280';
+                    
+                    const fatalitiesEstimate = Math.floor(properties.risk_score * 0.3);
+                    
+                    new mapboxgl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(`
+                            <div style="min-width: 280px;">
+                                <strong style="color: ${color}; font-size: 18px;">${properties.event_type.toUpperCase()}</strong>
+                                ${properties.is_recent ? '<span style="margin-left: 8px; color: #ef4444; font-size: 12px; font-weight: bold;">🔴 LIVE</span>' : ''}
+                                ${properties.is_predicted ? '<span style="margin-left: 8px; color: #3b82f6; font-size: 12px; font-weight: bold;">🔮 PREDICTED</span>' : ''}<br>
+                                <div style="margin: 10px 0; padding: 10px 0; border-top: 1px solid #444; border-bottom: 1px solid #444;">
+                                    <strong>Location:</strong> ${properties.state}, ${properties.lga}<br>
+                                    <strong>Risk Level:</strong> <span style="color: ${color}; font-weight: bold;">${properties.risk_score} (${properties.risk_level})</span><br>
+                                    <strong>Est. Fatalities:</strong> ~${fatalitiesEstimate}<br>
+                                    <strong>Inflation Impact:</strong> ${properties.inflation}%<br>
+                                    <strong>Time:</strong> ${new Date(properties.calculated_at).toLocaleString()}
+                                </div>
+                                <div style="margin-top: 10px; background: rgba(251, 191, 36, 0.1); padding: 8px; border-radius: 4px;">
+                                    <strong style="color: #fbbf24; font-size: 13px;">📊 Risk Analysis:</strong><br>
+                                    <span style="font-size: 12px; color: #d1d5db; line-height: 1.4;">${properties.trigger_reason}</span>
+                                </div>
+                            </div>
+                        `)
+                        .addTo(map);
+                });
+                
+                // Change cursor on hover
+                map.on('mouseenter', 'threat-markers-layer', function() {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+                
+                map.on('mouseleave', 'threat-markers-layer', function() {
+                    map.getCanvas().style.cursor = '';
+                });
+            }
+        }
+
+        // Update risk distribution chart
+        async function updateChart() {
+            const signals = await apiCall(`${PREDICTOR_API}/api/v1/signals`);
+            if (!signals || !signals.signals) return;
+
+            const distribution = {
+                'Critical': 0,
+                'High': 0,
+                'Medium': 0,
+                'Low': 0
+            };
+
+            signals.signals.forEach(signal => {
+                if (distribution.hasOwnProperty(signal.risk_level)) {
+                    distribution[signal.risk_level]++;
+                }
+            });
+
+            riskChart.updateSeries([
+                distribution.Critical,
+                distribution.High,
+                distribution.Medium,
+                distribution.Low
+            ]);
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            initRiskChart();
+            refreshData();
+            updateCurrentTime();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(refreshData, 30000);
+            // Update time every second
+            setInterval(updateCurrentTime, 1000);
+        });
+
+        // Prediction Functions
+        function updatePredictions() {
+            // Get slider values
+            const fuelPrice = parseInt(document.getElementById('fuelPriceSlider').value);
+            const socialMedia = parseInt(document.getElementById('socialMediaSlider').value);
+            
+            // Update display values
+            document.getElementById('fuelPriceValue').textContent = fuelPrice;
+            document.getElementById('socialMediaValue').textContent = socialMedia + '%';
+            
+            // Update prediction state
+            predictionState.fuelPriceIndex = fuelPrice;
+            predictionState.socialMediaChatter = socialMedia;
+            predictionState.isActive = true;
+            
+            // Apply predictive risk calculations
+            applyPredictiveRiskCalculations();
+            
+            // Update map and chart instantly (no page reload)
+            updateMapWithPredictions();
+            updateChartWithPredictions();
+            
+            // Check for critical threats
+            checkForCriticalThreats();
+        }
+        
+        function applyPredictiveRiskCalculations() {
+            // Calculate risk multipliers based on slider values
+            const fuelMultiplier = predictionState.fuelPriceIndex / 100; // 0.5 to 2.0
+            const socialMediaMultiplier = 1 + (predictionState.socialMediaChatter / 100); // 1.0 to 2.0
+            
+            // Apply to all signals
+            allSignals = baselineSignals.map(signal => {
+                const predictedRisk = Math.min(100, Math.round(
+                    signal.risk_score * fuelMultiplier * socialMediaMultiplier
+                ));
+                
+                // Determine new risk level
+                let newRiskLevel;
+                if (predictedRisk >= 80) newRiskLevel = 'Critical';
+                else if (predictedRisk >= 60) newRiskLevel = 'High';
+                else if (predictedRisk >= 40) newRiskLevel = 'Medium';
+                else if (predictedRisk >= 20) newRiskLevel = 'Low';
+                else newRiskLevel = 'Minimal';
+                
+                return {
+                    ...signal,
+                    risk_score: predictedRisk,
+                    risk_level: newRiskLevel,
+                    is_predicted: true,
+                    prediction_factors: {
+                        fuel_price: predictionState.fuelPriceIndex,
+                        social_media: predictionState.socialMediaChatter
+                    }
+                };
+            });
+        }
+        
+        function updateMapWithPredictions() {
+            // Clear existing markers
+            markerClusterGroup.clearLayers();
+            markers = [];
+            
+            const stateCoordinates = {
+                'Borno': [11.8333, 13.1500], 'Adamawa': [9.3333, 12.5000], 'Yobe': [12.2941, 11.9667],
+                'Sokoto': [13.0622, 5.2339], 'Kebbi': [11.4500, 4.2000], 'Zamfara': [12.1667, 6.6667],
+                'Katsina': [12.9908, 7.6008], 'Kaduna': [10.5222, 7.4383], 'Niger': [9.9333, 5.5833],
+                'Plateau': [9.2182, 9.5179], 'Taraba': [7.9833, 10.7667], 'Benue': [7.3333, 8.7500],
+                'Lagos': [6.5244, 3.3792], 'Abuja': [9.0765, 7.3986], 'unknown': [9.0820, 8.6753]
+            };
+            
+            allSignals.forEach(signal => {
+                const coords = stateCoordinates[signal.state] || stateCoordinates['unknown'];
+                const color = {
+                    'Critical': '#dc2626', 'High': '#ea580c', 'Medium': '#ca8a04',
+                    'Low': '#65a30d', 'Minimal': '#16a34a'
+                }[signal.risk_level] || '#6b7280';
+                
+                const isPredicted = signal.is_predicted;
+                
+                const marker = L.circleMarker(coords, {
+                    radius: Math.max(8, signal.risk_score / 7),
+                    fillColor: color,
+                    color: isPredicted ? '#0a84ff' : color,
+                    weight: isPredicted ? 3 : 2,
+                    opacity: 1,
+                    fillOpacity: isPredicted ? 0.85 : 0.7,
+                    className: isPredicted ? 'active-pulse' : ''
+                });
+                
+                marker.bindPopup(`
+                    <div style="color: #e0e0e0; padding: 8px; min-width: 280px;">
+                        <strong style="color: ${color}; font-size: 18px;">${signal.event_type.toUpperCase()}</strong>
+                        ${isPredicted ? '<span style="margin-left: 8px; color: #0a84ff; font-size: 12px; font-weight: bold;">🔮 PREDICTED</span>' : ''}<br>
+                        <div style="margin: 10px 0; padding: 10px 0; border-top: 1px solid #444; border-bottom: 1px solid #444;">
+                            <strong>Location:</strong> ${signal.state}, ${signal.lga}<br>
+                            <strong>Risk Level:</strong> <span style="color: ${color}; font-weight: bold;">${signal.risk_score} (${signal.risk_level})</span><br>
+                            ${isPredicted ? `<strong>Baseline:</strong> ${baselineSignals.find(s => s.state === signal.state && s.lga === signal.lga)?.risk_score || 'N/A'}<br>` : ''}
+                        </div>
+                        ${isPredicted ? `<div style="margin-top: 10px; padding: 6px; background: rgba(10, 132, 255, 0.2); border-left: 3px solid #0a84ff; border-radius: 4px;"><strong style="color: #0a84ff;">📊 Prediction Factors</strong><br><span style="font-size: 11px; color: #93c5fd;">Fuel: ₦${signal.prediction_factors.fuel_price}/L | Social Media: ${signal.prediction_factors.social_media}%</span></div>` : ''}
+                    </div>
+                `, { maxWidth: 380 });
+                
+                markers.push(marker);
+                markerClusterGroup.addLayer(marker);
+            });
+        }
+        
+        function updateChartWithPredictions() {
+            const distribution = {
+                'Critical': 0,
+                'High': 0,
+                'Medium': 0,
+                'Low': 0
+            };
+            
+            allSignals.forEach(signal => {
+                if (distribution.hasOwnProperty(signal.risk_level)) {
+                    distribution[signal.risk_level]++;
+                }
+            });
+            
+            riskChart.updateSeries([
+                distribution.Critical,
+                distribution.High,
+                distribution.Medium,
+                distribution.Low
+            ]);
+            
+            // Update prediction summary
+            const highRiskCount = distribution.Critical + distribution.High;
+            const criticalCount = distribution.Critical;
+            
+            document.getElementById('predictedHighRiskCount').textContent = highRiskCount;
+            document.getElementById('predictedCriticalCount').textContent = criticalCount;
+        }
+        
+        function checkForCriticalThreats() {
+            const criticalLGAs = allSignals.filter(s => s.risk_score >= 80);
+            
+            if (criticalLGAs.length > 0) {
+                // Show threat alert overlay
+                const overlay = document.getElementById('threatAlertOverlay');
+                const lgasList = criticalLGAs
+                    .slice(0, 5)
+                    .map(s => `${s.state} - ${s.lga}: ${s.risk_score}`)
+                    .join('<br>');
+                
+                document.getElementById('threatAlertDetails').innerHTML = 
+                    `<strong>${criticalLGAs.length}</strong> LGA${criticalLGAs.length > 1 ? 's have' : ' has'} crossed the critical risk threshold (≥80) based on current predictions.`;
+                
+                document.getElementById('threatAlertLGAs').innerHTML = lgasList + 
+                    (criticalLGAs.length > 5 ? `<br><span style="color: #fca5a5; font-size: 14px;">...and ${criticalLGAs.length - 5} more</span>` : '');
+                
+                overlay.classList.add('active');
+                
+                // Play alert sound (optional)
+                console.warn('PREDICTIVE THREAT DETECTED:', criticalLGAs.length, 'critical LGAs');
+            }
+        }
+        
+        function closeThreatAlert() {
+            document.getElementById('threatAlertOverlay').classList.remove('active');
+        }
+        
+        function resetPredictions() {
+            // Reset sliders to baseline
+            document.getElementById('fuelPriceSlider').value = 100;
+            document.getElementById('socialMediaSlider').value = 50;
+            document.getElementById('fuelPriceValue').textContent = '100';
+            document.getElementById('socialMediaValue').textContent = '50%';
+            
+            // Reset prediction state
+            predictionState = {
+                fuelPriceIndex: 100,
+                socialMediaChatter: 50,
+                isActive: false
+            };
+            
+            // Restore baseline signals
+            allSignals = JSON.parse(JSON.stringify(baselineSignals));
+            
+            // Update map and chart
+            updateMapWithPredictions();
+            updateChartWithPredictions();
+            
+            showNotification('Predictions reset to baseline', 'info');
+        }
+
+        // Stress Test Functions
+        function openStressTest() {
+            document.getElementById('stressTestModal').classList.remove('hidden');
+        }
+
+        function closeStressTest() {
+            document.getElementById('stressTestModal').classList.add('hidden');
+        }
+
+        async function applyStressTest() {
+            const fuelPrice = document.getElementById('fuelPrice').value;
+            const inflationRate = document.getElementById('inflationRate').value;
+            
+            showNotification('Applying economic stress test...', 'info');
+            
+            const result = await apiCall(`${PREDICTOR_API}/api/v1/stress-test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fuel_price: parseFloat(fuelPrice),
+                    inflation_rate: parseFloat(inflationRate)
+                })
+            });
+            
+            if (result) {
+                showNotification(`Stress test applied: Fuel ₦${fuelPrice}, Inflation ${inflationRate}%`, 'success');
+                closeStressTest();
+                setTimeout(refreshData, 2000);
+            }
+        }
+    </script>
+
+    <!-- Stress Test Modal -->
+    <div id="stressTestModal" class="fixed inset-0 bg-black bg-opacity-70 hidden flex items-center justify-center p-4" style="z-index: 9999;">
+        <div class="bg-gray-900 rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-700">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-white">Economic Stress Test</h3>
+                <button onclick="closeStressTest()" class="text-gray-400 hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Fuel Price (NGN)</label>
+                    <input type="number" id="fuelPrice" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent" value="650" min="400" max="2000">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Inflation Rate (%)</label>
+                    <input type="number" id="inflationRate" class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent" value="25" min="10" max="50" step="0.1">
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button onclick="applyStressTest()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium flex-1 transition-colors">Apply Test</button>
+                    <button onclick="closeStressTest()" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium flex-1 transition-colors">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notifications" class="fixed top-4 right-4 space-y-2" style="z-index: 9999;"></div>
+
+    <!-- Visual Alert Overlay -->
+    <div id="threatAlertOverlay" class="threat-alert-overlay">
+        <div class="threat-alert-box">
+            <div class="threat-alert-icon">⚠️</div>
+            <div class="threat-alert-title">PREDICTIVE THREAT DETECTED</div>
+            <div class="threat-alert-details" id="threatAlertDetails">
+                Multiple LGAs have crossed the critical risk threshold (≥80) based on current predictions.
+            </div>
+            <div class="mb-4">
+                <div class="text-white font-bold text-lg" id="threatAlertLGAs"></div>
+            </div>
+            <button class="threat-alert-close" onclick="closeThreatAlert()">Acknowledge & Close</button>
+        </div>
+    </div>
+
+</body>
+</html>

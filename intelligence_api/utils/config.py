@@ -20,8 +20,11 @@ class Config:
         "You are a Nextier Conflict Analyst. Extract Event_Type, State, LGA, and Severity from this text. Return strictly valid JSON."
     )
     
-    # Processing configuration
-    POLL_INTERVAL: int = int(os.getenv('POLL_INTERVAL', '30'))
+    # Polling configuration
+    POLL_INTERVAL: int = int(os.getenv('POLL_INTERVAL', '30'))  # seconds between processing cycles
+    
+    # Query and processing limits
+    MAX_EVENTS_QUERY_LIMIT: int = int(os.getenv('MAX_EVENTS_QUERY_LIMIT', '1000'))
     MAX_CONCURRENT_PROCESSING: int = int(os.getenv('MAX_CONCURRENT_PROCESSING', '5'))
     
     # HTTP configuration
@@ -30,7 +33,7 @@ class Config:
     MAX_KEEPALIVE_CONNECTIONS: int = int(os.getenv('MAX_KEEPALIVE_CONNECTIONS', '20'))
     
     # CORS configuration
-    ALLOWED_ORIGINS: list = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8080,https://nextier.example.com').split(',')
+    ALLOWED_ORIGINS: list = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173,http://localhost:8080,https://nextier.example.com').split(',')
     
     # Service configuration
     SERVICE_NAME: str = os.getenv('SERVICE_NAME', 'intelligence-api')
