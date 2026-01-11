@@ -62,8 +62,16 @@ class DeduplicationService:
             source_count = len(set(article['source'] for article in related_articles))
             
             # Calculate veracity score based on number of unique sources
-            # Simple formula: base score of 0.5 per source, capped at 1.0
-            veracity_score = min(1.0, source_count * 0.5)
+            # Base formula: 0.5 per source, capped at 1.0
+            base_veracity_score = min(1.0, source_count * 0.5)
+            
+            # Multi-source boost: If reported by >1 source, boost by 20%
+            if source_count > 1:
+                veracity_score = min(1.0, base_veracity_score * 1.2)
+                logger.info(f"Multi-source boost applied: {base_veracity_score:.2f} -> {veracity_score:.2f}", 
+                           sources=source_count)
+            else:
+                veracity_score = base_veracity_score
             
             # Take the first article as the representative one (could be enhanced to pick the most detailed)
             primary_article = related_articles[0].copy()

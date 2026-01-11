@@ -87,10 +87,14 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
 
   const heatmapPoints = signals.map(signal => {
     const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
+    // Use veracity_score as multiplier for heatmap intensity
+    // High-veracity events (multiple sources) appear sharper on the map
+    const veracityMultiplier = signal.veracity_score || 0.5
+    const baseIntensity = signal.risk_score / 100
     return {
       lat: coords.lat,
       lng: coords.lng,
-      intensity: signal.risk_score / 100
+      intensity: Math.min(1.0, baseIntensity * (1 + veracityMultiplier))
     }
   })
 
@@ -235,7 +239,8 @@ SimpleHeatmap.propTypes = {
     severity: PropTypes.string,
     flood_inundation_index: PropTypes.number,
     mining_proximity_km: PropTypes.number,
-    border_activity: PropTypes.string
+    border_activity: PropTypes.string,
+    veracity_score: PropTypes.number
   })).isRequired,
   onMapReady: PropTypes.func,
   onSignalClick: PropTypes.func,

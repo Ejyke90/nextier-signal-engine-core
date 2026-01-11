@@ -1,4 +1,4 @@
-import { MapPin, AlertTriangle, Activity } from 'lucide-react'
+import { MapPin, AlertTriangle, Activity, Shield } from 'lucide-react'
 
 const LiveSignalTicker = ({ signals, onLocationClick, loading }) => {
   const getRiskColor = (score) => {
@@ -42,7 +42,15 @@ const LiveSignalTicker = ({ signals, onLocationClick, loading }) => {
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                  <h4 className="text-white font-semibold text-sm">{signal.lga}, {signal.state}</h4>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-white font-semibold text-sm">{signal.lga}, {signal.state}</h4>
+                    {signal.veracity_score > 0.8 && (
+                      <div className="flex items-center space-x-1 bg-blue-500/20 border border-blue-500/50 px-2 py-0.5 rounded-full">
+                        <Shield className="w-3 h-3 text-blue-400" />
+                        <span className="text-blue-400 text-xs font-semibold">Verified</span>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-gray-400 text-xs mt-1 capitalize">{signal.event_type}</p>
                 </div>
                 <span className={`${getRiskBadgeColor(signal.risk_score)} px-2 py-1 rounded text-xs font-bold`}>

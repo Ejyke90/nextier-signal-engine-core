@@ -36,6 +36,11 @@ class Article(BaseModel):
     fingerprint: Optional[str] = None  # SHA-256 hash for deduplication
     veracity_score: float = Field(default_factory=lambda: 0.0)  # Score based on multi-source reporting
     source_count: int = Field(default_factory=lambda: 1)  # Number of sources reporting this incident
+    
+    @property
+    def is_verified(self) -> bool:
+        """Check if article should display verified badge (veracity_score > 0.8)"""
+        return self.veracity_score > 0.8
 
 
 class ArticleCreate(BaseModel):
@@ -59,6 +64,7 @@ class ArticleResponse(BaseModel):
     fingerprint: Optional[str] = None
     veracity_score: float = Field(default_factory=lambda: 0.0)
     source_count: int = Field(default_factory=lambda: 1)
+    is_verified: bool = Field(default=False)  # True if veracity_score > 0.8
 
 
 class HealthResponse(BaseModel):
