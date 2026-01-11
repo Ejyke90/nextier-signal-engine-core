@@ -9,6 +9,8 @@ import Toast from './components/Toast'
 import HighRiskAlertMonitor from './components/HighRiskAlertMonitor'
 import PolicymakerAlert from './components/PolicymakerAlert'
 import CategorizationIntelligence from './components/CategorizationIntelligence'
+import ConflictArchetypeDistribution from './components/ConflictArchetypeDistribution'
+import Logo from './components/Logo';
 import { API_CONFIG, POLLING_INTERVAL, NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_THRESHOLDS } from './constants'
 import './App.css'
 
@@ -34,16 +36,22 @@ function App() {
   })
   const [miningZoneOverlaps, setMiningZoneOverlaps] = useState(new Set())
   const [categorizationData, setCategorizationData] = useState([])
+  const [ingestionVolume, setIngestionVolume] = useState(0)
+  const [intelligenceDepth, setIntelligenceDepth] = useState(0)
 
   useEffect(() => {
     fetchRiskSignals()
     fetchTrendData()
     fetchCategorizationData()
     fetchCategorizationAudit()
+    fetchIngestionVolume()
+    fetchIntelligenceDepth()
     const interval = setInterval(() => {
       fetchRiskSignals()
       fetchTrendData()
       fetchCategorizationData()
+      fetchIngestionVolume()
+      fetchIntelligenceDepth()
     }, POLLING_INTERVAL)
     return () => clearInterval(interval)
   }, [])
@@ -106,8 +114,13 @@ function App() {
       }
     } catch (error) {
       console.error('Error fetching categorization audit:', error)
-      // For demo, trigger categorization anyway if fetch fails
-      await triggerCategorization()
+      // For demo, do not trigger categorization on 404 error
+      if (error.message.includes('404')) {
+        console.log('Categorization audit endpoint not found, skipping trigger')
+      } else {
+        // For other errors, trigger categorization anyway if fetch fails
+        await triggerCategorization()
+      }
     }
   }
 
@@ -124,6 +137,9 @@ function App() {
       console.log('Categorization triggered:', data.message)
     } catch (error) {
       console.error('Error triggering categorization:', error)
+      if (error.message.includes('404')) {
+        console.log('Categorization endpoint not found, skipping trigger')
+      }
     }
   }
 
@@ -142,7 +158,7 @@ function App() {
 
   const fetchRiskSignals = async () => {
     try {
-      const response = await fetch(API_CONFIG.ENDPOINTS.RISK_SIGNALS)
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RISK_SIGNALS}`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -181,6 +197,34 @@ function App() {
       setRiskSignals(sampleData)
       setLoading(false)
       console.log('Using sample data:', sampleData.length, 'signals')
+    }
+  }
+
+  const fetchIngestionVolume = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INGESTION_VOLUME}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setIngestionVolume(data.ingestion_volume || 0)
+    } catch (error) {
+      console.error('Error fetching ingestion volume:', error)
+      setIngestionVolume(0)
+    }
+  }
+
+  const fetchIntelligenceDepth = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INTELLIGENCE_DEPTH}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setIntelligenceDepth(data.intelligence_depth || 0)
+    } catch (error) {
+      console.error('Error fetching intelligence depth:', error)
+      setIntelligenceDepth(0)
     }
   }
 
@@ -225,6 +269,12 @@ function App() {
       if (data.features) {
         const simulatedSignals = data.features.map(f => f.properties)
         setRiskSignals(simulatedSignals)
+        
+        // Update categorization with simulated data if available
+        if (data.metadata && data.metadata.simulated_categories) {
+          setCategorizationData(data.metadata.simulated_categories)
+        }
+        
         setError({ message: 'Simulation completed successfully', type: 'success' })
       }
       fetchTrendData()
@@ -256,109 +306,102 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden">
-      {/* Compact Header with App Name */}
+      {/* Fixed Header with App Name */}
       <div 
-        className="flex items-center px-6 flex-shrink-0"
+        className="flex items-center px-6 flex-shrink-0 fixed top-0 left-0 right-0 z-50"
         style={{ 
-          height: '50px',
+          height: '60px',
           backgroundColor: '#1a1a2e',
           borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
-          zIndex: 1000
         }}
       >
-        <img 
-          src="/assets/Gemini_Generated_Image_kg014vkg014vkg01.png" 
-          alt="NNVCD Logo" 
-          style={{ 
-            height: '30px', 
-            marginRight: '10px' 
-          }} 
-        />
-        <h1 
-          style={{ 
-            color: '#ffffff',
-            fontSize: '18px',
-            fontWeight: '600',
-            margin: 0,
-            padding: 0,
-            letterSpacing: '0.5px'
-          }}
-        >
-          Nextier Nigeria Violent Conflict Database
-        </h1>
-      </div>
-      
-      {/* Top Row - KPI Cards */}
-      <div className="flex-shrink-0 border-b border-gray-700/50" style={{ height: '15vh' }}>
-        <KPICards 
-          signals={riskSignals}
-          criticalCount={criticalCount}
-          affectedStates={affectedStates}
-        />
-      </div>
-      
-      {/* Main Section - Bento Grid */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left - Live Signal Ticker (25% width) */}
-        <div className="w-[25%] border-r border-gray-700/50">
-          <LiveSignalTicker 
-            signals={enrichedSignals}
-            onLocationClick={handleLocationClick}
-            loading={loading}
-          />
+        <div className="flex items-center gap-3">
+          <Logo />
+          <h1 
+            className="text-xl font-semibold text-white tracking-wide m-0 p-0"
+          >
+            Nextier Nigeria Violent Conflict Database
+          </h1>
         </div>
-        
-        {/* Center - Map (45% width) */}
-        <div className="w-[45%] relative border-r border-gray-700/50">
-          <SimpleHeatmap 
+      </div>
+      
+      {/* Main Content with padding for fixed header */}
+      <div className="pt-16 pb-0 h-screen flex flex-col overflow-hidden">
+        {/* Top Row - KPI Cards */}
+        <div className="flex-shrink-0 border-b border-gray-700/50" style={{ height: '15vh' }}>
+          <KPICards 
             signals={riskSignals}
-            onMapReady={setMapInstance}
-            onSignalClick={handleSignalClick}
-            layers={layers}
-            onLayerChange={handleLayerChange}
-            onMiningZonesUpdate={handleMiningZonesUpdate}
+            criticalCount={criticalCount}
+            affectedStates={affectedStates}
+            ingestionVolume={ingestionVolume}
+            intelligenceDepth={intelligenceDepth}
           />
         </div>
         
-        {/* Right - National Risk Overview with Charts (30% width) */}
-        <div className="w-[30%] bg-gray-900/50 overflow-y-auto">
-          <div className="p-4 space-y-4">
-            <PolicymakerAlert signals={enrichedSignals} />
-            <RiskDistributionCharts 
-              signals={riskSignals}
-              trendData={trendData}
+        {/* Main Section - Bento Grid */}
+        <div className="flex flex-1 min-h-0">
+          {/* Left - Live Signal Ticker (25% width) */}
+          <div className="w-[25%] border-r border-gray-700/50">
+            <LiveSignalTicker 
+              signals={enrichedSignals}
+              onLocationClick={handleLocationClick}
+              loading={loading}
             />
-            <CategorizationIntelligence data={categorizationData} />
+          </div>
+          
+          {/* Center - Map (45% width) */}
+          <div className="w-[45%] relative border-r border-gray-700/50">
+            <SimpleHeatmap 
+              signals={riskSignals}
+              onMapReady={setMapInstance}
+              onSignalClick={handleSignalClick}
+              layers={layers}
+              onLayerChange={handleLayerChange}
+              onMiningZonesUpdate={handleMiningZonesUpdate}
+            />
+          </div>
+          
+          {/* Right - National Risk Overview with Charts (30% width) */}
+          <div className="w-[30%] bg-gray-900/50 overflow-y-auto">
+            <div className="p-4 space-y-4">
+              <PolicymakerAlert signals={enrichedSignals} />
+              <RiskDistributionCharts 
+                signals={riskSignals}
+                trendData={trendData}
+              />
+              <CategorizationIntelligence data={categorizationData} />
+              <ConflictArchetypeDistribution data={categorizationData} />
+            </div>
           </div>
         </div>
+        
+        {/* Bottom Section - Control Panel */}
+        <div className="flex-shrink-0 border-t border-gray-700/50" style={{ height: '10vh' }}>
+          <CompactControlPanel 
+            onSimulation={handleSimulation}
+          />
+        </div>
+        
+        {/* Signal Detail Panel */}
+        {selectedSignal && (
+          <SignalDetailPanel 
+            signal={selectedSignal}
+            onClose={() => setSelectedSignal(null)}
+          />
+        )}
+        
+        {/* Toast Notifications */}
+        {error && (
+          <Toast 
+            message={error.message}
+            type={error.type}
+            onClose={() => setError(null)}
+          />
+        )}
+        
+        {/* High-Risk Alert Monitor - Instant Webhooks */}
+        <HighRiskAlertMonitor />
       </div>
-      
-      {/* Bottom Section - Control Panel */}
-      <div className="flex-shrink-0 border-t border-gray-700/50" style={{ height: '10vh' }}>
-        <CompactControlPanel 
-          onSimulation={handleSimulation}
-        />
-      </div>
-      
-      {/* Signal Detail Panel */}
-      {selectedSignal && (
-        <SignalDetailPanel 
-          signal={selectedSignal}
-          onClose={() => setSelectedSignal(null)}
-        />
-      )}
-      
-      {/* Toast Notifications */}
-      {error && (
-        <Toast 
-          message={error.message}
-          type={error.type}
-          onClose={() => setError(null)}
-        />
-      )}
-      
-      {/* High-Risk Alert Monitor - Instant Webhooks */}
-      <HighRiskAlertMonitor />
     </div>
   )
 }

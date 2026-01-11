@@ -159,11 +159,11 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
 
   // Detect spatial correlation between signals and mining zones
   useEffect(() => {
-    if (!miningZones.length || !signalsArray.length) return
+    if (!miningZones.length || !signals.length) return
 
     const overlappingSignals = new Set()
 
-    signalsArray.forEach((signal, idx) => {
+    signals.forEach((signal, idx) => {
       const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
       const point = [coords.lng, coords.lat]
 
@@ -177,13 +177,16 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
       })
     })
 
-    setSignalsInMiningZones(overlappingSignals)
-    
-    // Notify parent component about mining zone overlaps
-    if (onMiningZonesUpdate) {
-      onMiningZonesUpdate(overlappingSignals)
+    // Only update state if the set of overlapping signals has changed
+    if (overlappingSignals.size !== signalsInMiningZones.size || 
+        ![...overlappingSignals].every(val => signalsInMiningZones.has(val))) {
+      setSignalsInMiningZones(overlappingSignals)
+      // Notify parent component about mining zone overlaps
+      if (onMiningZonesUpdate) {
+        onMiningZonesUpdate(overlappingSignals)
+      }
     }
-  }, [miningZones, signals, onMiningZonesUpdate])
+  }, [miningZones, signals, onMiningZonesUpdate, signalsInMiningZones])
 
   const getCircleColor = (riskScore) => {
     if (riskScore >= RISK_THRESHOLDS.CRITICAL) return RISK_COLORS.CRITICAL

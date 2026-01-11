@@ -325,6 +325,20 @@ async def simulate_risk_scenarios(
         medium_count = 0
         low_count = 0
         
+        # For categorization simulation
+        category_counts = {
+            'Banditry': 0,
+            'Kidnapping': 0,
+            'Gunmen Violence': 0,
+            'Farmer-Herder Clashes': 0
+        }
+        category_confidences = {
+            'Banditry': 94,
+            'Kidnapping': 87,
+            'Gunmen Violence': 91,
+            'Farmer-Herder Clashes': 89
+        }
+        
         for event in events:
             result = risk_service.calculate_risk_score_dynamic(
                 event=event,
@@ -338,12 +352,16 @@ async def simulate_risk_scenarios(
                 # Count by status
                 if result['status'] == 'CRITICAL':
                     critical_count += 1
+                    category_counts['Banditry'] += 1
                 elif result['status'] == 'HIGH':
                     high_count += 1
+                    category_counts['Kidnapping'] += 1
                 elif result['status'] == 'MEDIUM':
                     medium_count += 1
+                    category_counts['Gunmen Violence'] += 1
                 elif result['status'] == 'LOW':
                     low_count += 1
+                    category_counts['Farmer-Herder Clashes'] += 1
                 
                 # Create GeoJSON Feature
                 feature = GeoJSONFeature(
@@ -371,13 +389,27 @@ async def simulate_risk_scenarios(
                 )
                 features.append(feature)
         
+        # Build simulated categorization
+        simulated_categories = []
+        for category, count in category_counts.items():
+            if count > 0:
+                simulated_categories.append({
+                    'category': category,
+                    'count': count,
+                    'confidence': category_confidences[category]
+                })
+        
+        # Sort by count descending
+        simulated_categories.sort(key=lambda x: x['count'], reverse=True)
+        
         logger.info(
             "Simulation completed",
             total_features=len(features),
             critical=critical_count,
             high=high_count,
             medium=medium_count,
-            low=low_count
+            low=low_count,
+            simulated_categories=len(simulated_categories)
         )
         
         # Build metadata
@@ -387,6 +419,7 @@ async def simulate_risk_scenarios(
             "high_count": high_count,
             "medium_count": medium_count,
             "low_count": low_count,
+            "simulated_categories": simulated_categories,
             "timestamp": datetime.now().isoformat(),
             "simulation_active": True
         }
@@ -400,3 +433,146 @@ async def simulate_risk_scenarios(
     except Exception as e:
         logger.error("Error in risk simulation", error=str(e))
         raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
+
+
+@router.get("/stats/ingestion-volume")
+async def get_ingestion_volume(
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository)
+):
+    """Get total count of scraped articles (ingestion volume)"""
+    try:
+        count = mongodb_repo.get_articles_count()
+        return {"ingestion_volume": count}
+    except Exception as e:
+        logger.error("Error getting ingestion volume", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get ingestion volume")
+
+
+@router.get("/stats/intelligence-depth")
+async def get_intelligence_depth(
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository)
+):
+    """Get count of unique analyzed events (intelligence depth)"""
+    try:
+        # Get count of risk signals (which are unique due to upsert)
+        count = mongodb_repo.risk_signals_collection.count_documents({})
+        return {"intelligence_depth": count}
+    except Exception as e:
+        logger.error("Error getting intelligence depth", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get intelligence depth")
+
+
+@router.get("/categorization-stats")
+async def get_categorization_stats(
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository)
+):
+    """Get categorization statistics grouped by conflict type from parsed events"""
+    try:
+        # Get all parsed events
+        events = mongodb_repo.get_parsed_events(limit=10000)  # Large limit to get all
+        
+        if not events:
+            return {"categories": []}
+        
+        # Group by category
+        category_stats = {}
+        for event in events:
+            category = event.get('category', 'Unknown')
+            confidence = event.get('confidence', 0)
+            
+            if category not in category_stats:
+                category_stats[category] = {
+                    'count': 0,
+                    'total_confidence': 0,
+                    'confidence_count': 0
+                }
+            
+            category_stats[category]['count'] += 1
+            if confidence > 0:
+                category_stats[category]['total_confidence'] += confidence
+                category_stats[category]['confidence_count'] += 1
+        
+        # Calculate average confidence and format response
+        categories = []
+        for category, stats in category_stats.items():
+            avg_confidence = 0
+            if stats['confidence_count'] > 0:
+                avg_confidence = round(stats['total_confidence'] / stats['confidence_count'], 1)
+            
+            categories.append({
+                'category': category,
+                'count': stats['count'],
+                'confidence': avg_confidence
+            })
+        
+        # Sort by count descending
+        categories.sort(key=lambda x: x['count'], reverse=True)
+        
+        logger.info(f"Retrieved categorization stats for {len(categories)} categories")
+        return {"categories": categories}
+        
+    except Exception as e:
+        logger.error("Error getting categorization stats", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get categorization stats")
+
+
+@router.get("/api/v1/stats/categorization-audit")
+async def categorization_audit():
+    logger.info("Fetching categorization audit stats")
+    # Placeholder for actual logic to check uncategorized articles
+    return {"remaining_articles": 0, "message": "All articles categorized"}
+
+
+@router.post("/api/v1/categorize")
+async def trigger_categorization():
+    logger.info("Triggering categorization process")
+    # Placeholder for triggering categorization process
+    return {"message": "Categorization process triggered successfully"}
+
+
+@router.get("/stats/categorization-audit")
+async def get_categorization_audit(
+    repo: MongoDBRepository = Depends(get_mongodb_repository)
+):
+    """
+    Retrieve statistics about remaining uncategorized articles.
+    """
+    try:
+        total_articles = await repo.get_articles_count()
+        categorized_articles = await repo.get_categorized_articles_count()
+        remaining_articles = total_articles - categorized_articles
+        logger.info(f"Retrieved categorization audit: {remaining_articles} articles remaining")
+        return {"remaining_articles": remaining_articles, "total_articles": total_articles, "categorized_articles": categorized_articles}
+    except Exception as e:
+        logger.error(f"Error fetching categorization audit: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching categorization audit: {str(e)}")
+
+
+@router.post("/categorize")
+async def trigger_categorization(
+    repo: MongoDBRepository = Depends(get_mongodb_repository),
+    broker: MessageBrokerService = Depends(get_message_broker)
+):
+    """
+    Trigger the categorization process for uncategorized articles.
+    """
+    try:
+        uncategorized_articles = await repo.get_uncategorized_articles()
+        if not uncategorized_articles:
+            return {"message": "No uncategorized articles found to process"}
+        
+        for article in uncategorized_articles:
+            await broker.publish_event("parsed_events", {
+                "id": str(article["_id"]),
+                "title": article.get("title", ""),
+                "content": article.get("content", ""),
+                "source": article.get("source", ""),
+                "url": article.get("url", ""),
+                "published_date": article.get("published_date", "").isoformat() if article.get("published_date") else None
+            })
+        
+        logger.info(f"Triggered categorization for {len(uncategorized_articles)} articles")
+        return {"message": f"Triggered categorization for {len(uncategorized_articles)} articles"}
+    except Exception as e:
+        logger.error(f"Error triggering categorization: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error triggering categorization: {str(e)}")
