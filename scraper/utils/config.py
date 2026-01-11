@@ -95,6 +95,7 @@ class Config:
     REQUEST_TIMEOUT: int = int(os.getenv('REQUEST_TIMEOUT', '10'))
     MAX_CONNECTIONS: int = int(os.getenv('MAX_CONNECTIONS', '100'))
     MAX_KEEPALIVE_CONNECTIONS: int = int(os.getenv('MAX_KEEPALIVE_CONNECTIONS', '20'))
+    MAX_CONCURRENT_CONNECTIONS: int = int(os.getenv('MAX_CONCURRENT_CONNECTIONS', '10'))
     
     # CORS configuration
     ALLOWED_ORIGINS: list = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173,http://localhost:8080,https://nextier.example.com').split(',')

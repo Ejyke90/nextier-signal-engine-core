@@ -166,9 +166,33 @@ function App() {
   const affectedStates = new Set(riskSignals.map(s => s.state)).size
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Top Row - KPI Cards (15% height) */}
-      <div className="h-[15vh] border-b border-gray-700/50">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden">
+      {/* Compact Header with App Name */}
+      <div 
+        className="flex items-center px-6 flex-shrink-0"
+        style={{ 
+          height: '50px',
+          backgroundColor: '#1a1a2e',
+          borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+          zIndex: 1000
+        }}
+      >
+        <h1 
+          style={{ 
+            color: '#ffffff',
+            fontSize: '18px',
+            fontWeight: '600',
+            margin: 0,
+            padding: 0,
+            letterSpacing: '0.5px'
+          }}
+        >
+          Nextier Nigeria Violent Conflict Database
+        </h1>
+      </div>
+      
+      {/* Top Row - KPI Cards */}
+      <div className="flex-shrink-0 border-b border-gray-700/50" style={{ height: '15vh' }}>
         <KPICards 
           signals={riskSignals}
           criticalCount={criticalCount}
@@ -176,8 +200,8 @@ function App() {
         />
       </div>
       
-      {/* Main Section - Bento Grid (75% height) */}
-      <div className="h-[75vh] flex">
+      {/* Main Section - Bento Grid */}
+      <div className="flex flex-1 min-h-0">
         {/* Left - Live Signal Ticker (25% width) */}
         <div className="w-[25%] border-r border-gray-700/50">
           <LiveSignalTicker 
@@ -207,8 +231,8 @@ function App() {
         </div>
       </div>
       
-      {/* Bottom Section - Control Panel (10% height) */}
-      <div className="h-[10vh] border-t border-gray-700/50">
+      {/* Bottom Section - Control Panel */}
+      <div className="flex-shrink-0 border-t border-gray-700/50" style={{ height: '10vh' }}>
         <CompactControlPanel 
           onSimulation={handleSimulation}
         />

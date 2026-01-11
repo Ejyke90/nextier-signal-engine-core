@@ -8,14 +8,27 @@ from fastapi import HTTPException
 from scraper.utils import get_logger, Config
 from scraper.utils.rss_parser import RSSParser
 from scraper.models import Article
+from scraper.services.base_scraper import BaseScraper
+from scraper.services.mainstream_media_scraper import MainstreamMediaScraper
+from scraper.services.rss_intelligence_scraper import RSSIntelligenceScraper
+from scraper.services.verification_layer import VerificationLayer
+from scraper.services.deduplication import DeduplicationService
 
 logger = get_logger(__name__)
+
+# Global semaphore to limit concurrent connections and prevent IP blacklisting
+GLOBAL_SEMAPHORE = asyncio.Semaphore(Config.MAX_CONCURRENT_CONNECTIONS if hasattr(Config, 'MAX_CONCURRENT_CONNECTIONS') else 10)
 
 
 class ScrapingService:
     def __init__(self):
         self.client = None
-        self.rss_parser = RSSParser()
+        self.deduplication_service = DeduplicationService()
+        self.scrapers = {
+            'rss': RSSIntelligenceScraper(),
+            'web': MainstreamMediaScraper(),
+            'verification': VerificationLayer()
+        }
         self._create_client()
     
     def _create_client(self) -> None:
@@ -34,7 +47,7 @@ class ScrapingService:
     
     async def fetch_page(self, url: str, allow_failure: bool = True) -> Optional[str]:
         """
-        Fetch a web page with graceful error handling
+        Fetch a web page with graceful error handling and semaphore limiting
         
         Args:
             url: URL to fetch
@@ -43,163 +56,35 @@ class ScrapingService:
         Returns:
             HTML content or None if failed and allow_failure=True
         """
-        try:
-            response = await self.client.get(url, timeout=15.0)
-            response.raise_for_status()
-            return response.text
-        except httpx.TimeoutException:
-            logger.warning("Request timeout", url=url)
-            if allow_failure:
-                return None
-            raise HTTPException(status_code=504, detail="Request timeout")
-        except httpx.ConnectError:
-            logger.warning("Connection error", url=url)
-            if allow_failure:
-                return None
-            raise HTTPException(status_code=503, detail="Connection error")
-        except httpx.HTTPStatusError as e:
-            logger.warning("HTTP error", url=url, status_code=e.response.status_code)
-            if allow_failure:
-                return None
-            raise HTTPException(status_code=e.response.status_code, detail=f"HTTP error: {e}")
-        except Exception as e:
-            logger.warning("Unexpected error fetching page", url=url, error=str(e))
-            if allow_failure:
-                return None
-            raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
-    
-    async def scrape_from_rss(self, source: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        Scrape articles from RSS feed
-        
-        Args:
-            source: Dictionary with 'name' and 'rss_url'
-        
-        Returns:
-            List of scraped articles
-        """
-        source_name = source['name']
-        rss_url = source.get('rss_url')
-        
-        if not rss_url:
-            logger.warning(f"{source_name}: No RSS URL configured")
-            return []
-        
-        try:
-            logger.info(f"Attempting RSS scrape from {source_name}", url=rss_url)
-            
-            # Use RSSParser to parse the feed
-            articles = await asyncio.to_thread(
-                self.rss_parser.parse_feed,
-                rss_url,
-                Config.MAX_ARTICLES_PER_SOURCE
-            )
-            
-            if articles:
-                logger.info(f"✓ {source_name} (RSS): {len(articles)} articles")
-                return articles
-            else:
-                logger.warning(f"✗ {source_name} (RSS): No articles found")
-                return []
-                
-        except Exception as e:
-            logger.error(f"✗ {source_name} (RSS): Exception occurred", error=str(e))
-            return []
-    
-    async def scrape_from_web(self, source: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        Scrape articles from website (fallback method)
-        
-        Args:
-            source: Dictionary with 'name', 'web_url', and 'selectors'
-        
-        Returns:
-            List of scraped articles
-        """
-        articles = []
-        source_name = source['name']
-        source_url = source.get('web_url')
-        
-        if not source_url:
-            logger.warning(f"{source_name}: No web URL configured")
-            return []
-        
-        try:
-            logger.info(f"Attempting web scrape from {source_name}", url=source_url)
-            
-            html = await self.fetch_page(source_url, allow_failure=True)
-            if not html:
-                logger.warning(f"Failed to fetch page from {source_name}")
-                return []
-            
-            soup = BeautifulSoup(html, 'lxml')
-            
-            # Try each selector until we find articles
-            article_links = []
-            for selector in source.get('selectors', []):
-                elements = soup.select(selector)
-                if elements:
-                    for elem in elements[:Config.MAX_ARTICLES_PER_SOURCE]:
-                        if elem.name == 'a':
-                            article_links.append(elem)
-                        else:
-                            link = elem.find('a', href=True)
-                            if link:
-                                article_links.append(link)
-                    
-                    if article_links:
-                        logger.info(f"Found {len(article_links)} articles using selector '{selector}'")
-                        break
-            
-            if not article_links:
-                logger.warning(f"No articles found from {source_name}")
-                return []
-            
-            # Process article links
-            processed_urls = set()
-            
-            for link in article_links[:Config.MAX_ARTICLES_PER_SOURCE]:
-                href = link.get('href')
-                if not href or href in processed_urls:
-                    continue
-                
-                # Ensure we have a full URL
-                if href.startswith('/'):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(source_url)
-                    base_url = f"{parsed.scheme}://{parsed.netloc}"
-                    full_url = f"{base_url}{href}"
-                elif not href.startswith('http'):
-                    continue
-                else:
-                    full_url = href
-                
-                processed_urls.add(full_url)
-                
-                # Get article title from link text
-                title = link.get_text(strip=True)
-                
-                if title and len(title) > 10:
-                    article_data = {
-                        "title": title,
-                        "content": f"Article from {source_name}",
-                        "source": source_name,
-                        "url": full_url,
-                        "scraped_at": datetime.now().isoformat()
-                    }
-                    articles.append(article_data)
-                    logger.info(f"Scraped article from {source_name}", title=title[:50])
-            
-            logger.info(f"✓ {source_name} (Web): {len(articles)} articles")
-            return articles
-            
-        except Exception as e:
-            logger.error(f"✗ {source_name} (Web): Exception occurred", error=str(e))
-            return []
+        async with GLOBAL_SEMAPHORE:
+            try:
+                response = await self.client.get(url, timeout=15.0)
+                response.raise_for_status()
+                return response.text
+            except httpx.TimeoutException:
+                logger.warning("Request timeout", url=url)
+                if allow_failure:
+                    return None
+                raise HTTPException(status_code=504, detail="Request timeout")
+            except httpx.ConnectError:
+                logger.warning("Connection error", url=url)
+                if allow_failure:
+                    return None
+                raise HTTPException(status_code=503, detail="Connection error")
+            except httpx.HTTPStatusError as e:
+                logger.warning("HTTP error", url=url, status_code=e.response.status_code)
+                if allow_failure:
+                    return None
+                raise HTTPException(status_code=e.response.status_code, detail=f"HTTP error: {e}")
+            except Exception as e:
+                logger.warning("Unexpected error fetching page", url=url, error=str(e))
+                if allow_failure:
+                    return None
+                raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
     
     async def scrape_from_source(self, source: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Scrape from a single source using RSS (preferred) or web scraping (fallback)
+        Scrape from a single source using the appropriate scraper based on type
         
         Args:
             source: Dictionary with source configuration
@@ -208,23 +93,13 @@ class ScrapingService:
             List of scraped articles
         """
         source_type = source.get('type', 'rss')
+        scraper = self.scrapers.get(source_type, self.scrapers['web'])
         
-        # Try RSS first if available
-        if source_type == 'rss' and source.get('rss_url'):
-            articles = await self.scrape_from_rss(source)
-            if articles:
-                return articles
-            
-            # RSS failed, try web scraping as fallback
-            logger.info(f"{source['name']}: RSS failed, trying web scraping fallback")
-            return await self.scrape_from_web(source)
-        
-        # Web scraping only
-        elif source_type == 'web':
-            return await self.scrape_from_web(source)
-        
-        else:
-            logger.warning(f"{source['name']}: No valid scraping method configured")
+        try:
+            articles = await scraper.scrape(source)
+            return articles
+        except Exception as e:
+            logger.error(f"Error scraping from {source['name']}", error=str(e))
             return []
     
     async def scrape_multiple_sources(self) -> List[Dict[str, Any]]:
@@ -242,24 +117,31 @@ class ScrapingService:
         
         logger.info("Starting multi-source scraping", total_sources=len(Config.NEWS_SOURCES))
         
+        tasks = []
         for source in Config.NEWS_SOURCES:
-            try:
-                articles = await self.scrape_from_source(source)
-                if articles:
-                    all_articles.extend(articles)
-                    successful_sources.append(source['name'])
-                    
-                    # Track method used
-                    if source.get('type') == 'rss' and source.get('rss_url'):
-                        rss_count += 1
-                    else:
-                        web_count += 1
-                else:
-                    failed_sources.append(source['name'])
-            except Exception as e:
-                failed_sources.append(source['name'])
-                logger.error(f"✗ {source['name']}: Unexpected error", error=str(e))
+            tasks.append(self.scrape_from_source(source))
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for source, result in zip(Config.NEWS_SOURCES, results):
+            source_name = source['name']
+            if isinstance(result, Exception):
+                failed_sources.append(source_name)
+                logger.error(f"✗ {source_name}: Unexpected error", error=str(result))
                 continue
+            
+            articles = result
+            if articles:
+                all_articles.extend(articles)
+                successful_sources.append(source_name)
+                
+                # Track method used
+                if source.get('type') == 'rss' and source.get('rss_url'):
+                    rss_count += 1
+                else:
+                    web_count += 1
+            else:
+                failed_sources.append(source_name)
         
         logger.info(
             "Multi-source scraping complete",
@@ -272,8 +154,11 @@ class ScrapingService:
             sources_failed=failed_sources
         )
         
+        # Deduplicate and score articles for veracity
         if all_articles:
-            return all_articles
+            deduplicated_articles = self.deduplication_service.deduplicate_and_score(all_articles)
+            logger.info(f"Post-deduplication: {len(deduplicated_articles)} unique articles")
+            return deduplicated_articles
         else:
             logger.warning("All news sources failed to return articles")
             return []
@@ -286,7 +171,10 @@ class ScrapingService:
         return await self.scrape_multiple_sources()
     
     async def close(self) -> None:
-        """Close HTTP client"""
+        """Close HTTP clients for all scrapers"""
         if self.client:
             await self.client.aclose()
-            logger.info("Closed HTTP client")
+            logger.info("Closed main HTTP client")
+        for name, scraper in self.scrapers.items():
+            await scraper.close()
+            logger.info(f"Closed {name} scraper client")
