@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from ..models import HealthResponse, PredictionResponse, RiskSignalsResponse, PredictionStatus, RiskSignalResponse
+from ..models import (
+    HealthResponse, PredictionResponse, RiskSignalsResponse, PredictionStatus, 
+    RiskSignalResponse, SimulationParameters, SimulationResponse, GeoJSONFeature
+)
 from ..services import RiskService, MessageBrokerService, PredictionService
 from ..repositories import MongoDBRepository
 from ..utils import get_logger, Config
@@ -228,3 +231,131 @@ async def initialize_economic_data(
     except Exception as e:
         logger.error("Error initializing economic data", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to initialize economic data")
+
+
+@router.post("/simulate", response_model=SimulationResponse)
+async def simulate_risk_scenarios(
+    params: SimulationParameters,
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository),
+    risk_service: RiskService = Depends(get_risk_service)
+):
+    """
+    Real-time risk simulation endpoint.
+    
+    Accepts dynamic slider values and returns fresh GeoJSON with updated risk scores.
+    
+    Args:
+        params: SimulationParameters with fuel_price_index, inflation_rate, chatter_intensity
+    
+    Returns:
+        SimulationResponse with GeoJSON FeatureCollection and metadata
+    """
+    try:
+        logger.info(
+            "Starting risk simulation",
+            fuel_price_index=params.fuel_price_index,
+            inflation_rate=params.inflation_rate,
+            chatter_intensity=params.chatter_intensity
+        )
+        
+        # Get parsed events from MongoDB
+        events = mongodb_repo.get_parsed_events(limit=1000)
+        
+        if not events:
+            logger.warning("No parsed events found for simulation")
+            return SimulationResponse(
+                features=[],
+                metadata={
+                    "total_events": 0,
+                    "critical_count": 0,
+                    "high_count": 0,
+                    "message": "No events available for simulation"
+                },
+                simulation_params=params
+            )
+        
+        # Get economic data (needed for some calculations, though we override with slider values)
+        econ_data = mongodb_repo.get_economic_data()
+        
+        # Calculate dynamic risk scores for all events
+        features = []
+        critical_count = 0
+        high_count = 0
+        medium_count = 0
+        low_count = 0
+        
+        for event in events:
+            result = risk_service.calculate_risk_score_dynamic(
+                event=event,
+                econ_data=econ_data,
+                fuel_price_index=params.fuel_price_index,
+                inflation_rate=params.inflation_rate,
+                chatter_intensity=params.chatter_intensity
+            )
+            
+            if result:
+                # Count by status
+                if result['status'] == 'CRITICAL':
+                    critical_count += 1
+                elif result['status'] == 'HIGH':
+                    high_count += 1
+                elif result['status'] == 'MEDIUM':
+                    medium_count += 1
+                elif result['status'] == 'LOW':
+                    low_count += 1
+                
+                # Create GeoJSON Feature
+                feature = GeoJSONFeature(
+                    type="Feature",
+                    geometry={
+                        "type": "Point",
+                        "coordinates": [result['longitude'], result['latitude']]
+                    },
+                    properties={
+                        "risk_score": result['risk_score'],
+                        "risk_level": result['risk_level'],
+                        "status": result['status'],
+                        "event_type": result['event_type'],
+                        "state": result['state'],
+                        "lga": result['lga'],
+                        "severity": result['severity'],
+                        "source_title": result['source_title'],
+                        "source_url": result['source_url'],
+                        "trigger_reason": result['trigger_reason'],
+                        "heatmap_weight": result['heatmap_weight'],
+                        "heatmap_radius_km": result['heatmap_radius_km'],
+                        "is_urban": result['is_urban'],
+                        "calculated_at": result['calculated_at']
+                    }
+                )
+                features.append(feature)
+        
+        logger.info(
+            "Simulation completed",
+            total_features=len(features),
+            critical=critical_count,
+            high=high_count,
+            medium=medium_count,
+            low=low_count
+        )
+        
+        # Build metadata
+        metadata = {
+            "total_events": len(features),
+            "critical_count": critical_count,
+            "high_count": high_count,
+            "medium_count": medium_count,
+            "low_count": low_count,
+            "timestamp": datetime.now().isoformat(),
+            "simulation_active": True
+        }
+        
+        return SimulationResponse(
+            features=features,
+            metadata=metadata,
+            simulation_params=params
+        )
+        
+    except Exception as e:
+        logger.error("Error in risk simulation", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")

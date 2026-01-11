@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -7,11 +7,11 @@ class RiskSignal(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=50)
     state: str = Field(..., min_length=1, max_length=50)
     lga: str = Field(..., min_length=1, max_length=50)
-    severity: str = Field(..., regex=r'^(low|medium|high|critical)$')
+    severity: str = Field(..., pattern=r'^(low|medium|high|critical)$')
     fuel_price: float = Field(..., ge=0)
     inflation: float = Field(..., ge=0)
     risk_score: float = Field(..., ge=0, le=100)
-    risk_level: str = Field(..., regex=r'^(Minimal|Low|Medium|High|Critical)$')
+    risk_level: str = Field(..., pattern=r'^(Minimal|Low|Medium|High|Critical)$')
     source_title: str = Field(..., min_length=3, max_length=200)
     source_url: str = Field(..., min_length=10)
     trigger_reason: str = Field(default="Standard risk calculation")
@@ -41,11 +41,11 @@ class RiskSignalCreate(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=50)
     state: str = Field(..., min_length=1, max_length=50)
     lga: str = Field(..., min_length=1, max_length=50)
-    severity: str = Field(..., regex=r'^(low|medium|high|critical)$')
+    severity: str = Field(..., pattern=r'^(low|medium|high|critical)$')
     fuel_price: float = Field(..., ge=0)
     inflation: float = Field(..., ge=0)
     risk_score: float = Field(..., ge=0, le=100)
-    risk_level: str = Field(..., regex=r'^(Minimal|Low|Medium|High|Critical)$')
+    risk_level: str = Field(..., pattern=r'^(Minimal|Low|Medium|High|Critical)$')
     source_title: str = Field(..., min_length=3, max_length=200)
     source_url: str = Field(..., min_length=10)
 
@@ -109,3 +109,25 @@ class PredictionStatus(BaseModel):
     economic_data_points: int
     last_calculation: str
     background_processor_running: bool
+
+
+class SimulationParameters(BaseModel):
+    """Dynamic simulation parameters from UI sliders"""
+    fuel_price_index: float = Field(..., ge=0, le=100, description="Fuel price crisis index (0-100)")
+    inflation_rate: float = Field(..., ge=0, le=100, description="Inflation rate percentage (0-100)")
+    chatter_intensity: float = Field(..., ge=0, le=100, description="Social media chatter intensity (0-100)")
+
+
+class GeoJSONFeature(BaseModel):
+    """GeoJSON Feature for heatmap visualization"""
+    type: str = Field(default="Feature")
+    geometry: dict
+    properties: dict
+
+
+class SimulationResponse(BaseModel):
+    """Response for simulation endpoint with GeoJSON and metadata"""
+    type: str = Field(default="FeatureCollection")
+    features: List[GeoJSONFeature]
+    metadata: dict = Field(default_factory=dict)
+    simulation_params: SimulationParameters

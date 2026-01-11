@@ -73,6 +73,7 @@ services:
       - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
       - SERVICE_NAME=predictor
       - LOG_LEVEL=INFO
       - MONGODB_URL=mongodb://admin:password@mongodb:27017/

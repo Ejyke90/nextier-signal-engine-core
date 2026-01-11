@@ -343,6 +343,184 @@ class RiskService:
             logger.error("Error calculating risk score", error=str(e))
             return None
     
+    def calculate_risk_score_dynamic(
+        self, 
+        event: Dict[str, Any], 
+        econ_data: pd.DataFrame,
+        fuel_price_index: float,
+        inflation_rate: float,
+        chatter_intensity: float
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Calculate dynamic risk score for simulation with slider parameters.
+        
+        Args:
+            event: Event data dictionary
+            econ_data: Economic data DataFrame
+            fuel_price_index: Fuel price crisis index (0-100)
+            inflation_rate: Inflation rate percentage (0-100)
+            chatter_intensity: Social media chatter intensity (0-100)
+        
+        Returns:
+            Dictionary with risk score, status, heatmap_weight, and all event data
+        """
+        try:
+            event_type = event.get('event_type', '').lower()
+            state = event.get('state', '').strip()
+            lga = event.get('lga', '').strip()
+            severity = event.get('severity', '').lower()
+            latitude = event.get('latitude')
+            longitude = event.get('longitude')
+            
+            if not latitude or not longitude:
+                logger.warning("Event missing coordinates", state=state, lga=lga)
+                return None
+            
+            trigger_reasons = []
+            
+            # Base risk score calculation
+            base_score = Config.BASE_RISK_SCORE
+            
+            # Event type modifiers
+            base_score += self.event_type_scores.get(event_type, 15)
+            
+            # Severity modifiers
+            base_score += self.severity_modifiers.get(severity, 5)
+            
+            # DYNAMIC ECONOMIC MODIFIERS (from sliders)
+            # Map inflation_rate slider (0-100) to actual inflation percentage
+            actual_inflation = inflation_rate
+            if actual_inflation > Config.INFLATION_THRESHOLD:
+                inflation_bonus = min((actual_inflation - Config.INFLATION_THRESHOLD) * 2, 20)
+                base_score += inflation_bonus
+                trigger_reasons.append(f"High inflation ({actual_inflation:.1f}%)")
+            
+            # Map fuel_price_index slider (0-100) to fuel price impact
+            # Scale: 0-100 index maps to 0-20 bonus points
+            fuel_bonus = (fuel_price_index / 100) * 20
+            base_score += fuel_bonus
+            if fuel_price_index > 50:
+                trigger_reasons.append(f"Elevated fuel prices (index: {fuel_price_index:.0f}/100)")
+            
+            # === MULTIDIMENSIONAL INDICATORS ===
+            
+            # 1. CLIMATE MULTIPLIER
+            climate_data = self.find_climate_data(state, lga)
+            flood_inundation = None
+            
+            if climate_data:
+                flood_inundation = climate_data.get('flood_inundation_index', 0)
+                
+                if flood_inundation > 20 and event_type in ['clash', 'conflict', 'violence']:
+                    base_score = base_score * 1.5
+                    trigger_reasons.append(
+                        f"Flooding-induced displacement ({flood_inundation:.1f}% inundated)"
+                    )
+            
+            # 2. MINING MULTIPLIER
+            mining_site = self.find_nearest_mining_site(event)
+            mining_proximity = None
+            
+            if mining_site:
+                mining_proximity = mining_site.get('distance_km')
+                
+                if mining_proximity and mining_proximity < 10:
+                    base_score += 15
+                    trigger_reasons.append(
+                        f"High Funding Potential ({mining_proximity:.1f}km from mining)"
+                    )
+            
+            # 3. SAHELIAN MULTIPLIER
+            border_data = self.find_border_data(state, lga)
+            
+            if border_data:
+                border_activity = border_data.get('border_activity')
+                
+                if border_activity == 'High' and state.lower() in ['sokoto', 'kebbi']:
+                    base_score += 20
+                    trigger_reasons.append("Lakurawa Presence Detected")
+                elif border_activity == 'Critical':
+                    base_score += 15
+                    trigger_reasons.append("Critical border activity")
+                elif border_activity == 'High':
+                    base_score += 10
+                    trigger_reasons.append("High border activity")
+            
+            # === ECONOMIC IGNITER: Urban LGA Multiplier ===
+            # If fuel_price_index > 80, apply 1.5x multiplier to urban LGAs
+            is_urban = Config.is_urban_lga(lga)
+            if fuel_price_index > 80 and is_urban:
+                original_score = base_score
+                base_score = base_score * 1.5
+                trigger_reasons.append(
+                    f"Economic Crisis in Urban Center (fuel index: {fuel_price_index:.0f}) - "
+                    f"1.5x multiplier applied"
+                )
+                logger.info(f"Economic Igniter activated: {original_score} -> {base_score} for {lga}")
+            
+            # Normalize to 0-100 range
+            risk_score = max(0, min(100, base_score))
+            
+            # Determine risk level and status
+            if risk_score >= 80:
+                risk_level = "Critical"
+                status = "CRITICAL"
+            elif risk_score >= 60:
+                risk_level = "High"
+                status = "HIGH"
+            elif risk_score >= 40:
+                risk_level = "Medium"
+                status = "MEDIUM"
+            elif risk_score >= 20:
+                risk_level = "Low"
+                status = "LOW"
+            else:
+                risk_level = "Minimal"
+                status = "MINIMAL"
+            
+            # === SOCIAL TRIGGER: Map chatter_intensity to heatmap weight ===
+            # chatter_intensity (0-100) directly influences the heatmap radius/weight
+            # Higher chatter = larger heat zone radius
+            # Base radius: 5km, Max radius: 50km
+            base_radius_km = 5
+            max_radius_km = 50
+            heatmap_radius_km = base_radius_km + (chatter_intensity / 100) * (max_radius_km - base_radius_km)
+            
+            # Weight for heatmap intensity (0-1 scale)
+            heatmap_weight = min(1.0, (risk_score / 100) * (1 + chatter_intensity / 100))
+            
+            # Build trigger reason
+            if trigger_reasons:
+                trigger_reason = f"{risk_level} Risk: " + "; ".join(trigger_reasons)
+            else:
+                trigger_reason = f"{risk_level} Risk: Standard calculation"
+            
+            return {
+                'event_type': event.get('event_type', 'unknown'),
+                'state': state,
+                'lga': lga,
+                'severity': severity,
+                'latitude': latitude,
+                'longitude': longitude,
+                'risk_score': round(risk_score, 1),
+                'risk_level': risk_level,
+                'status': status,
+                'source_title': event.get('source_title', ''),
+                'source_url': event.get('source_url', ''),
+                'trigger_reason': trigger_reason,
+                'heatmap_weight': round(heatmap_weight, 3),
+                'heatmap_radius_km': round(heatmap_radius_km, 1),
+                'is_urban': is_urban,
+                'fuel_price_index': fuel_price_index,
+                'inflation_rate': inflation_rate,
+                'chatter_intensity': chatter_intensity,
+                'calculated_at': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error("Error in dynamic risk calculation", error=str(e))
+            return None
+    
     def calculate_risk_scores_batch(self, events: List[Dict[str, Any]], econ_data: pd.DataFrame) -> List[RiskSignal]:
         """Calculate risk scores for multiple events"""
         try:

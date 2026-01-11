@@ -5,7 +5,10 @@ from .risk import (
     HealthResponse, 
     PredictionResponse, 
     RiskSignalsResponse, 
-    PredictionStatus
+    PredictionStatus,
+    SimulationParameters,
+    GeoJSONFeature,
+    SimulationResponse
 )
 
 __all__ = [
@@ -15,5 +18,8 @@ __all__ = [
     "HealthResponse", 
     "PredictionResponse", 
     "RiskSignalsResponse", 
-    "PredictionStatus"
+    "PredictionStatus",
+    "SimulationParameters",
+    "GeoJSONFeature",
+    "SimulationResponse"
 ]
