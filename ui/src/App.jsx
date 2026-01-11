@@ -7,6 +7,8 @@ import CompactControlPanel from './components/CompactControlPanel'
 import SignalDetailPanel from './components/SignalDetailPanel'
 import Toast from './components/Toast'
 import HighRiskAlertMonitor from './components/HighRiskAlertMonitor'
+import PolicymakerAlert from './components/PolicymakerAlert'
+import CategorizationIntelligence from './components/CategorizationIntelligence'
 import { API_CONFIG, POLLING_INTERVAL, NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_THRESHOLDS } from './constants'
 import './App.css'
 
@@ -21,6 +23,7 @@ function App() {
     heatmap: true,
     markers: true,
     climate: true,
+    climateStress: true,
     mining: true,
     border: true
   })
@@ -29,13 +32,18 @@ function App() {
     inflation_rate: 50,
     chatter_intensity: 50
   })
+  const [miningZoneOverlaps, setMiningZoneOverlaps] = useState(new Set())
+  const [categorizationData, setCategorizationData] = useState([])
 
   useEffect(() => {
     fetchRiskSignals()
     fetchTrendData()
+    fetchCategorizationData()
+    fetchCategorizationAudit()
     const interval = setInterval(() => {
       fetchRiskSignals()
       fetchTrendData()
+      fetchCategorizationData()
     }, POLLING_INTERVAL)
     return () => clearInterval(interval)
   }, [])
@@ -55,6 +63,67 @@ function App() {
     } catch (error) {
       console.error('Error fetching trend data:', error)
       generateTrendData()
+    }
+  }
+
+  const fetchCategorizationData = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CATEGORIZATION_STATS}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCategorizationData(data.categories || [])
+      console.log('Categorization data loaded:', data.categories?.length || 0, 'categories')
+    } catch (error) {
+      console.error('Error fetching categorization data:', error)
+      // Use sample data for demo
+      const sampleData = [
+        { category: 'Banditry', count: 14, confidence: 94 },
+        { category: 'Kidnapping', count: 8, confidence: 87 },
+        { category: 'Gunmen Violence', count: 22, confidence: 91 },
+        { category: 'Farmer-Herder Clashes', count: 16, confidence: 89 }
+      ]
+      setCategorizationData(sampleData)
+      console.log('Using sample categorization data')
+    }
+  }
+
+  const fetchCategorizationAudit = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/stats/categorization-audit`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      
+      // If there are remaining uncategorized articles, trigger categorization
+      if (data.remaining_articles > 0) {
+        console.log(`Found ${data.remaining_articles} uncategorized articles, triggering categorization...`)
+        await triggerCategorization()
+      } else {
+        console.log('All articles are categorized')
+      }
+    } catch (error) {
+      console.error('Error fetching categorization audit:', error)
+      // For demo, trigger categorization anyway if fetch fails
+      await triggerCategorization()
+    }
+  }
+
+  const triggerCategorization = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TRIGGER_CATEGORIZATION}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      console.log('Categorization triggered:', data.message)
+    } catch (error) {
+      console.error('Error triggering categorization:', error)
     }
   }
 
@@ -78,9 +147,10 @@ function App() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      setRiskSignals(data)
+      const signals = data.signals || data || []  // Handle both response formats
+      setRiskSignals(signals)
       setLoading(false)
-      console.log('Risk signals loaded:', data.length, 'signals')
+      console.log('Risk signals loaded:', signals.length, 'signals')
     } catch (error) {
       console.error('Error fetching risk signals:', error)
       // Fallback to sample data for demo
@@ -93,7 +163,8 @@ function App() {
           fuel_price: 570.0,
           inflation: 28.9,
           risk_score: 100,
-          risk_level: "Critical"
+          category: "Banditry",
+          confidence: 94
         },
         {
           event_type: "protest",
@@ -103,7 +174,8 @@ function App() {
           fuel_price: 680.0,
           inflation: 18.2,
           risk_score: 68.0,
-          risk_level: "High"
+          category: "Gunmen Violence",
+          confidence: 78
         }
       ]
       setRiskSignals(sampleData)
@@ -129,6 +201,10 @@ function App() {
 
   const handleLayerChange = (newLayers) => {
     setLayers(newLayers)
+  }
+
+  const handleMiningZonesUpdate = (overlaps) => {
+    setMiningZoneOverlaps(overlaps)
   }
 
   const handleSimulation = async (params) => {
@@ -158,13 +234,25 @@ function App() {
     }
   }
 
-  const criticalCount = riskSignals.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length
-  const highCount = riskSignals.filter(s => s.risk_score >= RISK_THRESHOLDS.HIGH && s.risk_score < RISK_THRESHOLDS.CRITICAL).length
-  const avgRiskScore = riskSignals.length > 0 
-    ? Math.round(riskSignals.reduce((sum, s) => sum + s.risk_score, 0) / riskSignals.length)
+  const signalsArray = Array.isArray(riskSignals) ? riskSignals : []
+  const criticalCount = signalsArray.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length
+  const highCount = signalsArray.filter(s => s.risk_score >= RISK_THRESHOLDS.HIGH && s.risk_score < RISK_THRESHOLDS.CRITICAL).length
+  const avgRiskScore = signalsArray.length > 0 
+    ? Math.round(signalsArray.reduce((sum, s) => sum + s.risk_score, 0) / signalsArray.length)
     : 0
   
-  const affectedStates = new Set(riskSignals.map(s => s.state)).size
+  const affectedStates = new Set(signalsArray.map(s => s.state)).size
+
+  // Enrich signals with mining zone information
+  const enrichedSignals = signalsArray.map((signal, idx) => {
+    const signalKey = `${signal.state}-${signal.lga}-${idx}`
+    const inMiningZone = miningZoneOverlaps.has(signalKey)
+    return {
+      ...signal,
+      inMiningZone,
+      miningZoneAlert: inMiningZone ? 'Conflict likely fueled by illicit mineral trade' : null
+    }
+  })
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden">
@@ -179,7 +267,7 @@ function App() {
         }}
       >
         <img 
-          src="/Gemini_Generated_Image_kg014vkg014vkg01.png" 
+          src="/assets/Gemini_Generated_Image_kg014vkg014vkg01.png" 
           alt="NNVCD Logo" 
           style={{ 
             height: '30px', 
@@ -214,7 +302,7 @@ function App() {
         {/* Left - Live Signal Ticker (25% width) */}
         <div className="w-[25%] border-r border-gray-700/50">
           <LiveSignalTicker 
-            signals={riskSignals}
+            signals={enrichedSignals}
             onLocationClick={handleLocationClick}
             loading={loading}
           />
@@ -228,15 +316,20 @@ function App() {
             onSignalClick={handleSignalClick}
             layers={layers}
             onLayerChange={handleLayerChange}
+            onMiningZonesUpdate={handleMiningZonesUpdate}
           />
         </div>
         
         {/* Right - National Risk Overview with Charts (30% width) */}
-        <div className="w-[30%] bg-gray-900/50">
-          <RiskDistributionCharts 
-            signals={riskSignals}
-            trendData={trendData}
-          />
+        <div className="w-[30%] bg-gray-900/50 overflow-y-auto">
+          <div className="p-4 space-y-4">
+            <PolicymakerAlert signals={enrichedSignals} />
+            <RiskDistributionCharts 
+              signals={riskSignals}
+              trendData={trendData}
+            />
+            <CategorizationIntelligence data={categorizationData} />
+          </div>
         </div>
       </div>
       

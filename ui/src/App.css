@@ -123,3 +123,27 @@ input[type="range"].slider::-moz-range-track {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+
+/* Mining Zone Glow Effect */
+@keyframes mining-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(255, 165, 0, 0.8));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(255, 165, 0, 1)) drop-shadow(0 0 20px rgba(255, 165, 0, 0.6));
+  }
+}
+
+.mining-zone-glow {
+  animation: mining-glow 2s ease-in-out infinite;
+}
+
+/* Live Signal Ticker Rolling Animation */
+@keyframes scrollUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.animate-scroll {
+  animation: scrollUp 120s linear infinite;
+}

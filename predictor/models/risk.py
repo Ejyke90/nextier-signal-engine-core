@@ -44,6 +44,13 @@ class RiskSignal(BaseModel):
     surge_detected: bool = Field(default=False)
     surge_percentage_increase: Optional[float] = Field(default=None)
     
+    # Climate-Conflict Correlation Fields
+    climate_zone_region: Optional[str] = Field(default=None)
+    climate_recession_index: Optional[float] = Field(default=None, ge=0, le=1)
+    climate_impact_zone: Optional[str] = Field(default=None)
+    climate_conflict_correlation: Optional[str] = Field(default=None)
+    conflict_driver: Optional[str] = Field(default=None)
+    
     calculated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -101,6 +108,13 @@ class RiskSignalResponse(BaseModel):
     is_farmer_herder_conflict: bool = False
     surge_detected: bool = False
     surge_percentage_increase: Optional[float] = None
+    
+    # Climate-Conflict Correlation Fields
+    climate_zone_region: Optional[str] = None
+    climate_recession_index: Optional[float] = None
+    climate_impact_zone: Optional[str] = None
+    climate_conflict_correlation: Optional[str] = None
+    conflict_driver: Optional[str] = None
     
     calculated_at: str
 

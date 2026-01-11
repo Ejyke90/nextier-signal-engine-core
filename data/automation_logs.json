@@ -70,5 +70,264 @@
       "db_success": true,
       "mq_success": true
     }
+  },
+  {
+    "timestamp": "2026-01-11T10:46:47.941828",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 107.88917,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T14:15:02.547004",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 2.522806,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T14:30:06.698373",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 6.660297,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T14:45:01.377496",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 1.355721,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T15:01:08.032187",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 30,
+      "high_risk_count": 0,
+      "duration_seconds": 68.009102,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T15:31:08.109081",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 68.088345,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T15:46:10.350151",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 69.975312,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T16:00:02.605012",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 2.552606,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T16:07:22.051780",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": "2026-01-11T16:00:00.049981"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:31:29.286332",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T18:45:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:31:32.321840",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:31:45.952710",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T18:45:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:31:46.289442",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T18:45:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:45:04.539830",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 4.525692,
+      "db_success": true,
+      "mq_success": true
+    }
+  },
+  {
+    "timestamp": "2026-01-11T18:45:04.546436",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 4.532209,
+      "db_success": true,
+      "mq_success": true
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:00:12.332675",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 12.32272,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:00:12.433835",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 12.420029,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:15:01.503493",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 1.490233,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:15:59.013771",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 58.997338,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:31:00.833883",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 60.821761,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:31:04.965592",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 64.954354,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:45:07.231725",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 7.217386,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T19:45:07.694329",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 7.681367,
+      "db_success": true,
+      "mq_success": false
+    }
   }
 ]

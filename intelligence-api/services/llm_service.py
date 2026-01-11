@@ -80,11 +80,40 @@ class LLMService:
                     # Validate required fields
                     required_fields = ["Event_Type", "State", "LGA", "Severity"]
                     if all(field in parsed_data for field in required_fields):
+                        # Extract early-warning social signals
+                        sentiment_intensity = parsed_data.get("Sentiment_Intensity")
+                        hate_speech_indicators = parsed_data.get("Hate_Speech_Indicators", [])
+                        conflict_driver = parsed_data.get("Conflict_Driver")
+                        
+                        # Validate sentiment_intensity range
+                        if sentiment_intensity is not None:
+                            try:
+                                sentiment_intensity = int(sentiment_intensity)
+                                if sentiment_intensity < 0 or sentiment_intensity > 100:
+                                    logger.warning(f"Sentiment intensity out of range: {sentiment_intensity}, setting to None")
+                                    sentiment_intensity = None
+                            except (ValueError, TypeError):
+                                logger.warning(f"Invalid sentiment intensity: {sentiment_intensity}, setting to None")
+                                sentiment_intensity = None
+                        
+                        # Validate hate_speech_indicators is a list
+                        if not isinstance(hate_speech_indicators, list):
+                            logger.warning(f"Hate speech indicators not a list: {hate_speech_indicators}, setting to empty list")
+                            hate_speech_indicators = []
+                        
+                        # Validate conflict_driver is one of the allowed values
+                        if conflict_driver and conflict_driver not in ["Economic", "Environmental", "Social"]:
+                            logger.warning(f"Invalid conflict driver: {conflict_driver}, setting to None")
+                            conflict_driver = None
+                        
                         return {
                             "event_type": parsed_data.get("Event_Type", "unknown"),
                             "state": parsed_data.get("State", "unknown") or "unknown",
                             "lga": parsed_data.get("LGA", "unknown") or "unknown",
-                            "severity": parsed_data.get("Severity", "unknown") or "unknown"
+                            "severity": parsed_data.get("Severity", "unknown") or "unknown",
+                            "sentiment_intensity": sentiment_intensity,
+                            "hate_speech_indicators": hate_speech_indicators,
+                            "conflict_driver": conflict_driver
                         }
                     else:
                         logger.warning("LLM response missing required fields", response=parsed_data)
@@ -126,7 +155,10 @@ class LLMService:
                     lga=parsed_data["lga"],
                     severity=parsed_data["severity"],
                     source_title=article.get("title", ""),
-                    source_url=article.get("url", "")
+                    source_url=article.get("url", ""),
+                    sentiment_intensity=parsed_data.get("sentiment_intensity"),
+                    hate_speech_indicators=parsed_data.get("hate_speech_indicators", []),
+                    conflict_driver=parsed_data.get("conflict_driver")
                 )
             else:
                 logger.warning("Failed to parse article", title=article.get('title', 'Unknown title'))

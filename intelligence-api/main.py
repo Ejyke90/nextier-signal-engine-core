@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from intelligence_api.api import router
 from intelligence_api.utils import Config, configure_logging, get_logger
-from intelligence_api.services import LLMService, MessageBrokerService, ProcessingService
+from intelligence_api.services import LLMService, MessageBrokerService, ProcessingService, LLMProcessor, CategorizationService
 from intelligence_api.repositories import MongoDBRepository
 
 # Configure logging
@@ -24,12 +24,13 @@ llm_service = None
 message_broker = None
 mongodb_repo = None
 processing_service = None
+categorization_service = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
-    global llm_service, message_broker, mongodb_repo, processing_service
+    global llm_service, message_broker, mongodb_repo, processing_service, categorization_service
     
     logger.info("Starting intelligence API service")
     
@@ -39,9 +40,11 @@ async def lifespan(app: FastAPI):
         message_broker = MessageBrokerService()
         mongodb_repo = MongoDBRepository()
         processing_service = ProcessingService(mongodb_repo, llm_service, message_broker)
+        categorization_service = CategorizationService(mongodb_repo, LLMProcessor())
         
-        # Start background processor
+        # Start background processors
         asyncio.create_task(processing_service.start_background_processor())
+        asyncio.create_task(categorization_service.start_background_categorizer())
         
         logger.info("Services initialized successfully")
     except Exception as e:
@@ -55,6 +58,8 @@ async def lifespan(app: FastAPI):
     try:
         if processing_service:
             processing_service.stop_background_processor()
+        if categorization_service:
+            categorization_service.stop_background_categorizer()
         if llm_service:
             await llm_service.close()
         if message_broker:

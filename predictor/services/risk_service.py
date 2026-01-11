@@ -14,6 +14,7 @@ logger = get_logger(__name__)
 class RiskService:
     def __init__(self):
         self.climate_data = self._load_climate_data()
+        self.climate_indicators = self._load_climate_indicators_geojson()
         self.mining_data = self._load_mining_data()
         self.border_data = self._load_border_data()
         self.strategic_indicators = self._load_strategic_indicators()
@@ -53,6 +54,18 @@ class RiskService:
         except Exception as e:
             logger.warning(f"Could not load climate data: {e}")
             return []
+    
+    def _load_climate_indicators_geojson(self) -> Dict[str, Any]:
+        """Load climate stress zones from GeoJSON file"""
+        try:
+            data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'climate_indicators.geojson')
+            with open(data_path, 'r') as f:
+                geojson_data = json.load(f)
+                logger.info(f"Loaded {len(geojson_data.get('features', []))} climate stress zones")
+                return geojson_data
+        except Exception as e:
+            logger.warning(f"Could not load climate indicators GeoJSON: {e}")
+            return {'type': 'FeatureCollection', 'features': []}
     
     def _load_mining_data(self) -> List[Dict[str, Any]]:
         """Load mining activity data from JSON file"""
@@ -121,6 +134,65 @@ class RiskService:
         c = 2 * asin(sqrt(a))
         km = 6371 * c
         return km
+    
+    def _point_in_polygon(self, lat: float, lon: float, polygon_coords: List[List[float]]) -> bool:
+        """Check if a point is inside a polygon using ray casting algorithm"""
+        inside = False
+        n = len(polygon_coords)
+        
+        for i in range(n):
+            j = (i - 1) % n
+            xi, yi = polygon_coords[i][0], polygon_coords[i][1]
+            xj, yj = polygon_coords[j][0], polygon_coords[j][1]
+            
+            intersect = ((yi > lat) != (yj > lat)) and (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+            if intersect:
+                inside = not inside
+        
+        return inside
+    
+    def calculate_climate_risk(self, event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Calculate climate risk for an event based on climate stress zones
+        
+        Returns:
+            Dict with climate risk data if event is in a climate stress zone, None otherwise
+        """
+        try:
+            latitude = event.get('latitude')
+            longitude = event.get('longitude')
+            
+            if not latitude or not longitude:
+                return None
+            
+            # Check each climate stress zone
+            for feature in self.climate_indicators.get('features', []):
+                geometry = feature.get('geometry', {})
+                properties = feature.get('properties', {})
+                
+                if geometry.get('type') == 'Polygon':
+                    # Get polygon coordinates (first ring for exterior)
+                    polygon_coords = geometry.get('coordinates', [[]])[0]
+                    
+                    # Check if event is within this climate stress zone
+                    if self._point_in_polygon(latitude, longitude, polygon_coords):
+                        impact_zone = properties.get('impact_zone', 'Unknown')
+                        recession_index = properties.get('recession_index', 0)
+                        
+                        return {
+                            'in_climate_zone': True,
+                            'region': properties.get('region', 'Unknown'),
+                            'indicator': properties.get('indicator', 'Unknown'),
+                            'recession_index': recession_index,
+                            'impact_zone': impact_zone,
+                            'conflict_correlation': properties.get('conflict_correlation', ''),
+                            'is_high_impact': impact_zone == 'High'
+                        }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error calculating climate risk: {e}")
+            return None
     
     def find_climate_data(self, state: str, lga: str) -> Optional[Dict[str, Any]]:
         """Find climate indicators for a given location"""
@@ -422,6 +494,37 @@ class RiskService:
                 )
                 logger.info(f"Farmer-Herder multiplier applied: {original_score:.1f} -> {base_score:.1f}")
             
+            # === CLIMATE-CONFLICT CORRELATION ===
+            # Calculate climate risk using GeoJSON climate stress zones
+            climate_risk = self.calculate_climate_risk(event)
+            climate_zone_region = None
+            climate_recession_index = None
+            climate_conflict_driver = None
+            
+            if climate_risk and climate_risk.get('in_climate_zone'):
+                climate_zone_region = climate_risk.get('region')
+                climate_recession_index = climate_risk.get('recession_index', 0)
+                impact_zone = climate_risk.get('impact_zone')
+                conflict_correlation = climate_risk.get('conflict_correlation', '')
+                
+                # If event occurs in High impact zone, increase risk score and tag as Environmental/Climate
+                if climate_risk.get('is_high_impact'):
+                    climate_bonus = 25  # Significant boost for High impact zones
+                    base_score += climate_bonus
+                    climate_conflict_driver = 'Environmental/Climate'
+                    trigger_reasons.append(
+                        f"Climate Stress Zone: {climate_zone_region} (Recession Index: {climate_recession_index:.2f}) - "
+                        f"{conflict_correlation}"
+                    )
+                    logger.info(f"Climate-Conflict correlation applied: +{climate_bonus} points in {climate_zone_region}")
+                elif impact_zone in ['Medium-High', 'Medium']:
+                    climate_bonus = 15
+                    base_score += climate_bonus
+                    climate_conflict_driver = 'Environmental/Climate'
+                    trigger_reasons.append(
+                        f"Climate Stress Zone: {climate_zone_region} ({impact_zone} impact) - {conflict_correlation}"
+                    )
+            
             # Ensure score is within bounds
             risk_score = max(0, min(100, base_score))
             
@@ -493,7 +596,13 @@ class RiskService:
                 high_escalation_potential=high_escalation_potential,
                 is_farmer_herder_conflict=is_farmer_herder,
                 surge_detected=surge_detected,
-                surge_percentage_increase=percentage_increase if surge_detected else None
+                surge_percentage_increase=percentage_increase if surge_detected else None,
+                # Climate-Conflict Correlation Fields
+                climate_zone_region=climate_zone_region,
+                climate_recession_index=climate_recession_index,
+                climate_impact_zone=impact_zone,
+                climate_conflict_correlation=climate_risk.get('conflict_correlation') if climate_risk else None,
+                conflict_driver=climate_conflict_driver
             )
             
         except Exception as e:

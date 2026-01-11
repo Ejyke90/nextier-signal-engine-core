@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import PropTypes from 'prop-types'
@@ -6,7 +6,86 @@ import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
 import IndicatorLegend from './IndicatorLegend'
 import LayerToggle from './LayerToggle'
+import ClimateStressLayer from './ClimateStressLayer'
 import { NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_COLORS, CIRCLE_RADIUS, RISK_THRESHOLDS, INDICATOR_THRESHOLDS } from '../constants'
+
+const MiningZonesLayer = ({ enabled, onZonesLoaded }) => {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!enabled) return
+
+    let geoJsonLayer = null
+
+    fetch('/data/mining_zones.geojson')
+      .then(response => response.json())
+      .then(data => {
+        geoJsonLayer = L.geoJSON(data, {
+          style: () => ({
+            fillColor: '#FFA500',
+            fillOpacity: 0.3,
+            color: '#FF8C00',
+            weight: 2,
+            opacity: 0.6
+          }),
+          onEachFeature: (feature, layer) => {
+            layer.on({
+              mouseover: (e) => {
+                const layer = e.target
+                layer.setStyle({
+                  fillOpacity: 0.5,
+                  weight: 3
+                })
+                
+                const popup = L.popup()
+                  .setLatLng(e.latlng)
+                  .setContent(`
+                    <div class="bg-amber-900/90 text-white p-3 rounded-lg border border-amber-500">
+                      <div class="font-bold text-sm mb-1 flex items-center gap-2">
+                        <span class="text-lg">⚠️</span>
+                        <span>ALERT: High Mining Density</span>
+                      </div>
+                      <div class="text-xs space-y-1">
+                        <div><span class="font-semibold">State:</span> ${feature.properties.state}</div>
+                        <div><span class="font-semibold">Mineral:</span> ${feature.properties.mineral}</div>
+                        <div><span class="font-semibold">Risk:</span> ${feature.properties.risk_type}</div>
+                        <div class="mt-2 pt-2 border-t border-amber-600 text-amber-200">
+                          Resource-Driven Conflict Risk
+                        </div>
+                      </div>
+                    </div>
+                  `)
+                  .openOn(map)
+              },
+              mouseout: (e) => {
+                const layer = e.target
+                layer.setStyle({
+                  fillOpacity: 0.3,
+                  weight: 2
+                })
+                map.closePopup()
+              }
+            })
+          }
+        }).addTo(map)
+
+        if (onZonesLoaded) {
+          onZonesLoaded(data.features)
+        }
+      })
+      .catch(error => {
+        console.error('Error loading mining zones:', error)
+      })
+
+    return () => {
+      if (geoJsonLayer) {
+        map.removeLayer(geoJsonLayer)
+      }
+    }
+  }, [map, enabled, onZonesLoaded])
+
+  return null
+}
 
 const HeatmapLayer = ({ points }) => {
   const map = useMap()
@@ -56,7 +135,56 @@ const HeatmapLayer = ({ points }) => {
   return null
 }
 
-const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChange }) => {
+const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChange, onMiningZonesUpdate }) => {
+  const [miningZones, setMiningZones] = useState([])
+  const [signalsInMiningZones, setSignalsInMiningZones] = useState(new Set())
+
+  // Check if a point is inside a polygon using ray casting algorithm
+  const isPointInPolygon = (point, polygon) => {
+    const [lng, lat] = point
+    let inside = false
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i]
+      const [xj, yj] = polygon[j]
+      
+      const intersect = ((yi > lat) !== (yj > lat)) &&
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+      
+      if (intersect) inside = !inside
+    }
+    
+    return inside
+  }
+
+  // Detect spatial correlation between signals and mining zones
+  useEffect(() => {
+    if (!miningZones.length || !signalsArray.length) return
+
+    const overlappingSignals = new Set()
+
+    signalsArray.forEach((signal, idx) => {
+      const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
+      const point = [coords.lng, coords.lat]
+
+      miningZones.forEach(zone => {
+        if (zone.geometry.type === 'Polygon') {
+          const polygon = zone.geometry.coordinates[0]
+          if (isPointInPolygon(point, polygon)) {
+            overlappingSignals.add(`${signal.state}-${signal.lga}-${idx}`)
+          }
+        }
+      })
+    })
+
+    setSignalsInMiningZones(overlappingSignals)
+    
+    // Notify parent component about mining zone overlaps
+    if (onMiningZonesUpdate) {
+      onMiningZonesUpdate(overlappingSignals)
+    }
+  }, [miningZones, signals, onMiningZonesUpdate])
+
   const getCircleColor = (riskScore) => {
     if (riskScore >= RISK_THRESHOLDS.CRITICAL) return RISK_COLORS.CRITICAL
     if (riskScore >= RISK_THRESHOLDS.HIGH) return RISK_COLORS.HIGH
@@ -71,7 +199,7 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
     return CIRCLE_RADIUS.LOW
   }
 
-  const getIndicatorBadges = (signal) => {
+  const getIndicatorBadges = (signal, signalKey) => {
     const badges = []
     if (layers?.climate && signal.flood_inundation_index && signal.flood_inundation_index > INDICATOR_THRESHOLDS.FLOOD_INUNDATION) {
       badges.push('🌊')
@@ -82,10 +210,15 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
     if (layers?.border && signal.border_activity && ['High', 'Critical'].includes(signal.border_activity)) {
       badges.push('🚨')
     }
+    // Add mining zone indicator if signal overlaps with mining zone
+    if (signalsInMiningZones.has(signalKey)) {
+      badges.push('💎')
+    }
     return badges
   }
 
-  const heatmapPoints = signals.map(signal => {
+  const signalsArray = Array.isArray(signals) ? signals : []
+  const heatmapPoints = signalsArray.map(signal => {
     const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
     // Use veracity_score as multiplier for heatmap intensity
     // High-veracity events (multiple sources) appear sharper on the map
@@ -116,25 +249,35 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {layers?.heatmap !== false && <HeatmapLayer points={heatmapPoints} />}
+        <ClimateStressLayer enabled={layers?.climateStress !== false} />
+        <MiningZonesLayer enabled={layers?.mining !== false} onZonesLoaded={setMiningZones} />
         
         {/* Circle Markers for each signal */}
-        {layers?.markers !== false && signals.map((signal, idx) => {
+        {layers?.markers !== false && signalsArray.map((signal, idx) => {
           const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
-          const badges = getIndicatorBadges(signal)
+          const signalKey = `${signal.state}-${signal.lga}-${idx}`
+          const badges = getIndicatorBadges(signal, signalKey)
+          const isInMiningZone = signalsInMiningZones.has(signalKey)
+          
           return (
             <CircleMarker
-              key={`${signal.state}-${signal.lga}-${idx}`}
+              key={signalKey}
               center={[coords.lat, coords.lng]}
               radius={getCircleRadius(signal.risk_score)}
               fillColor={getCircleColor(signal.risk_score)}
-              color="#ffffff"
-              weight={2}
+              color={isInMiningZone ? "#FFA500" : "#ffffff"}
+              weight={isInMiningZone ? 4 : 2}
               opacity={0.9}
               fillOpacity={0.7}
+              className={isInMiningZone ? 'mining-zone-glow' : ''}
               eventHandlers={{
                 click: () => {
                   if (onSignalClick) {
-                    onSignalClick(signal)
+                    onSignalClick({
+                      ...signal,
+                      inMiningZone: isInMiningZone,
+                      miningZoneAlert: isInMiningZone ? 'Conflict likely fueled by illicit mineral trade' : null
+                    })
                   }
                 }
               }}
@@ -152,6 +295,17 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
                     <div><span className="font-semibold">Risk Level:</span> {signal.risk_level}</div>
                     <div><span className="font-semibold">Event Type:</span> {signal.event_type}</div>
                     <div><span className="font-semibold">Severity:</span> {signal.severity}</div>
+                    {isInMiningZone && (
+                      <div className="mt-2 p-2 bg-amber-100 border border-amber-400 rounded">
+                        <div className="flex items-center gap-1 text-amber-900 font-semibold text-xs">
+                          <span>💎</span>
+                          <span>Mining Zone Alert</span>
+                        </div>
+                        <div className="text-xs text-amber-800 mt-1">
+                          Conflict likely fueled by illicit mineral trade
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => onSignalClick && onSignalClick(signal)}
@@ -174,18 +328,18 @@ const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChan
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
             <span className="text-gray-400">Total Signals:</span>
-            <span className="text-white font-bold">{signals.length}</span>
+            <span className="text-white font-bold">{signalsArray.length}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Hot Zones (≥80):</span>
             <span className="text-red-400 font-bold animate-pulse">
-              {signals.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length}
+              {signalsArray.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">States Affected:</span>
             <span className="text-white font-bold">
-              {new Set(signals.map(s => s.state)).size}
+              {new Set(signalsArray.map(s => s.state)).size}
             </span>
           </div>
         </div>
@@ -248,10 +402,12 @@ SimpleHeatmap.propTypes = {
     heatmap: PropTypes.bool,
     markers: PropTypes.bool,
     climate: PropTypes.bool,
+    climateStress: PropTypes.bool,
     mining: PropTypes.bool,
     border: PropTypes.bool
   }),
-  onLayerChange: PropTypes.func
+  onLayerChange: PropTypes.func,
+  onMiningZonesUpdate: PropTypes.func
 }
 
 export default SimpleHeatmap

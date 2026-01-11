@@ -1,0 +1,44 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "state": "Zamfara",
+        "mineral": "Gold",
+        "risk_type": "Illegal Mining / Banditry Funding",
+        "intensity": 0.95
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[6.2, 12.1], [6.8, 12.1], [6.8, 11.5], [6.2, 11.5], [6.2, 12.1]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "state": "Kaduna",
+        "mineral": "Gemstones/Gold",
+        "risk_type": "Resource-Driven Conflict",
+        "intensity": 0.75
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[7.1, 10.5], [7.7, 10.5], [7.7, 9.9], [7.1, 9.9], [7.1, 10.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "state": "Sokoto",
+        "mineral": "Gold/Lead",
+        "risk_type": "Extremist Funding Potential",
+        "intensity": 0.85
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[5.1, 13.1], [5.7, 13.1], [5.7, 12.5], [5.1, 12.5], [5.1, 13.1]]]
+      }
+    }
+  ]
+}

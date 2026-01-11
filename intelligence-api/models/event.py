@@ -10,6 +10,12 @@ class ParsedEvent(BaseModel):
     severity: str = Field(..., regex=r'^(low|medium|high|critical)$')
     source_title: str = Field(..., min_length=3, max_length=200)
     source_url: str = Field(..., min_length=10)
+    
+    # Early-warning social signals
+    sentiment_intensity: Optional[int] = Field(default=None, ge=0, le=100, description="Emotional intensity (0-100)")
+    hate_speech_indicators: Optional[list[str]] = Field(default_factory=list, description="Detected hate speech markers")
+    conflict_driver: Optional[str] = Field(default=None, regex=r'^(Economic|Environmental|Social)$', description="Primary conflict cause")
+    
     parsed_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -30,6 +36,12 @@ class EventResponse(BaseModel):
     severity: str
     source_title: str
     source_url: str
+    
+    # Early-warning social signals
+    sentiment_intensity: Optional[int] = None
+    hate_speech_indicators: Optional[list[str]] = None
+    conflict_driver: Optional[str] = None
+    
     parsed_at: str
 
 
@@ -49,6 +61,14 @@ class AnalysisResponse(BaseModel):
 class EventsResponse(BaseModel):
     events: list[EventResponse]
     count: int
+
+
+class CategorizationAuditResponse(BaseModel):
+    total_articles: int
+    processed_articles: int
+    remaining_articles: int
+    categories: Dict[str, Dict[str, Any]]
+    confidence_logs: List[Dict[str, Any]]
 
 
 class ProcessingStatus(BaseModel):

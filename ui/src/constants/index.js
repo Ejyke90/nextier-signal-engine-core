@@ -34,7 +34,9 @@ export const API_CONFIG = {
   ENDPOINTS: {
     RISK_OVERVIEW: '/api/v1/risk-overview',
     SIMULATE: '/api/v1/simulate',
-    RISK_SIGNALS: '/data/risk_signals.json'
+    RISK_SIGNALS: '/api/v1/signals',
+    CATEGORIZATION_STATS: '/api/v1/categorization-stats',
+    TRIGGER_CATEGORIZATION: '/api/v1/categorize'
   }
 }
 

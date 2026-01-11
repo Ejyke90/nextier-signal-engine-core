@@ -101,6 +101,7 @@ services:
       - "8080:8080"
     volumes:
       - ./:/app
+      - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
       - SERVICE_NAME=ui

@@ -1,16 +1,33 @@
 from datetime import datetime
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from ..models import HealthResponse, AnalysisResponse, EventsResponse, ProcessingStatus, EventResponse
-from ..services import LLMService, MessageBrokerService, ProcessingService
+from ..models import HealthResponse, AnalysisResponse, EventsResponse, ProcessingStatus, EventResponse, CategorizationStatsResponse, CategorizationAuditResponse
+from ..services import LLMService, MessageBrokerService, ProcessingService, LLMProcessor, CategorizationService
 from ..repositories import MongoDBRepository
 from ..utils import get_logger, Config
 
 logger = get_logger(__name__)
 router = APIRouter()
 
-# Global processing service instance
+# Global service instances
 processing_service = None
+categorization_service = None
+
+
+def get_llm_processor() -> LLMProcessor:
+    """Dependency injection for LLM processor"""
+    return LLMProcessor()
+
+
+def get_categorization_service(
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository),
+    llm_processor: LLMProcessor = Depends(get_llm_processor)
+) -> CategorizationService:
+    """Dependency injection for categorization service"""
+    global categorization_service
+    if categorization_service is None:
+        categorization_service = CategorizationService(mongodb_repo, llm_processor)
+    return categorization_service
 
 
 def get_llm_service() -> LLMService:
@@ -193,3 +210,37 @@ async def stop_background_processor(
     except Exception as e:
         logger.error("Error stopping background processor", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to stop background processor")
+
+
+@router.get("/stats/categorization-audit", response_model=CategorizationAuditResponse)
+async def get_categorization_audit_stats(
+    mongodb_repo: MongoDBRepository = Depends(get_mongodb_repository)
+):
+    """Get categorization audit statistics for documented proof report"""
+    try:
+        audit_data = mongodb_repo.get_categorization_audit()
+        return CategorizationAuditResponse(**audit_data)
+        
+    except Exception as e:
+        logger.error("Error getting categorization audit stats", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get categorization audit stats")
+
+
+@router.post("/categorize", response_model=AnalysisResponse)
+async def trigger_categorization(
+    background_tasks: BackgroundTasks,
+    categorization_service: CategorizationService = Depends(get_categorization_service)
+):
+    """Trigger immediate categorization of uncategorized articles"""
+    try:
+        background_tasks.add_task(categorization_service.categorize_articles)
+        
+        return AnalysisResponse(
+            status="processing",
+            events_processed=0,
+            message="Categorization processing started in background"
+        )
+        
+    except Exception as e:
+        logger.error("Error triggering categorization", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Categorization trigger failed: {str(e)}")

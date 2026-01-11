@@ -61,6 +61,15 @@ const LayerToggle = ({ layers, onLayerChange }) => {
             <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-200 hover:text-white">
               <input
                 type="checkbox"
+                checked={layers.climateStress}
+                onChange={() => toggleLayer('climateStress')}
+                className="w-4 h-4 rounded"
+              />
+              <span>🌡️ Climate Stress Zones</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-200 hover:text-white">
+              <input
+                type="checkbox"
                 checked={layers.mining}
                 onChange={() => toggleLayer('mining')}
                 className="w-4 h-4 rounded"
@@ -88,6 +97,7 @@ LayerToggle.propTypes = {
     heatmap: PropTypes.bool,
     markers: PropTypes.bool,
     climate: PropTypes.bool,
+    climateStress: PropTypes.bool,
     mining: PropTypes.bool,
     border: PropTypes.bool
   }).isRequired,
