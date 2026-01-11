@@ -7,19 +7,40 @@ const KPICards = ({ signals, criticalCount, affectedStates }) => {
   useEffect(() => {
     // Calculate time since last ingestion from signals
     if (signals && signals.length > 0) {
-      const latestSignal = signals.reduce((latest, signal) => {
-        const signalTime = new Date(signal.scraped_at || signal.published_at)
-        return signalTime > latest ? signalTime : latest
-      }, new Date(0))
-      setLastIngestionTime(latestSignal)
+      let latestSignal = null
+      
+      for (const signal of signals) {
+        const timestamp = signal.scraped_at || signal.published_at
+        if (timestamp) {
+          const signalTime = new Date(timestamp)
+          // Only consider valid dates (not epoch time)
+          if (signalTime.getFullYear() > 2020 && (!latestSignal || signalTime > latestSignal)) {
+            latestSignal = signalTime
+          }
+        }
+      }
+      
+      // If no valid timestamp found, use current time (just ingested)
+      setLastIngestionTime(latestSignal || new Date())
+    } else {
+      setLastIngestionTime(new Date())
     }
   }, [signals])
 
   const getMinutesAgo = () => {
-    if (!lastIngestionTime) return 0
+    if (!lastIngestionTime) return '<1'
     const now = new Date()
     const diffMs = now - lastIngestionTime
-    return Math.floor(diffMs / 60000)
+    const minutes = Math.floor(diffMs / 60000)
+    
+    // If less than 1 minute, show <1
+    if (minutes < 1) return '<1'
+    // If more than 60 minutes, show hours
+    if (minutes > 60) {
+      const hours = Math.floor(minutes / 60)
+      return `${hours}h`
+    }
+    return minutes
   }
 
   const kpis = [
