@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Activity, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Activity, Clock, CheckCircle, AlertCircle, Play } from 'lucide-react'
+import { API_CONFIG } from '../constants'
 
 const SystemHeartbeat = () => {
   const [schedulerStatus, setSchedulerStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [scraping, setScraping] = useState(false)
 
   useEffect(() => {
     fetchSchedulerStatus()
@@ -26,6 +28,26 @@ const SystemHeartbeat = () => {
       console.error('Error fetching scheduler status:', err)
       setError(err.message)
       setLoading(false)
+    }
+  }
+
+  const triggerManualScrape = async () => {
+    setScraping(true)
+    try {
+      const response = await fetch(`${API_CONFIG.SCRAPER_URL}${API_CONFIG.ENDPOINTS.MANUAL_SCRAPE}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      console.log('Manual scraping triggered:', data)
+      // Refresh scheduler status after scraping
+      setTimeout(() => {
+        fetchSchedulerStatus()
+      }, 2000)
+    } catch (err) {
+      console.error('Error triggering manual scrape:', err)
+    } finally {
+      setScraping(false)
     }
   }
 
@@ -75,6 +97,23 @@ const SystemHeartbeat = () => {
 
   return (
     <div className="flex items-center gap-4">
+      {/* Manual Scrape Button */}
+      <button
+        onClick={triggerManualScrape}
+        disabled={scraping}
+        className={`flex items-center gap-2 px-4 py-2 glassmorphism rounded-lg border transition-all duration-200 ${
+          scraping 
+            ? 'border-gray-500/30 cursor-not-allowed opacity-50' 
+            : 'border-blue-500/30 hover:border-blue-400/50 hover:bg-blue-500/10 cursor-pointer'
+        }`}
+        title="Trigger manual scraping now"
+      >
+        <Play className={`w-4 h-4 ${scraping ? 'text-gray-400 animate-pulse' : 'text-blue-400'}`} />
+        <span className={`text-sm font-semibold ${scraping ? 'text-gray-400' : 'text-blue-400'}`}>
+          {scraping ? 'Scraping...' : 'Scrape Now'}
+        </span>
+      </button>
+
       {/* Status Indicator */}
       <div className={`flex items-center gap-2 px-4 py-2 glassmorphism rounded-lg border ${
         isActive ? 'border-green-500/30' : 'border-yellow-500/30'

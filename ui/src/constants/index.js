@@ -31,12 +31,16 @@ export const NIGERIA_CENTER = { lat: 9.0820, lng: 8.6753 }
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8002',
+  SCRAPER_URL: 'http://localhost:8000',
   ENDPOINTS: {
     RISK_OVERVIEW: '/api/v1/risk-overview',
     SIMULATE: '/api/v1/simulate',
     RISK_SIGNALS: '/api/v1/signals',
     CATEGORIZATION_STATS: '/api/v1/categorization-stats',
-    TRIGGER_CATEGORIZATION: '/api/v1/categorize'
+    TRIGGER_CATEGORIZATION: '/api/v1/categorize',
+    INGESTION_VOLUME: '/api/v1/stats/ingestion-volume',
+    INTELLIGENCE_DEPTH: '/api/v1/stats/intelligence-depth',
+    MANUAL_SCRAPE: '/api/v1/scrape'
   }
 }
 

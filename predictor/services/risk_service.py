@@ -291,13 +291,13 @@ class RiskService:
             
             # Try exact match first
             econ_row = econ_data[
-                (econ_data['State'].str.lower() == state.lower()) &
-                (econ_data['LGA'].str.lower() == lga.lower())
+                (econ_data['state'].str.lower() == state.lower()) &
+                (econ_data['lga'].str.lower() == lga.lower())
             ]
             
             if econ_row.empty:
                 # Try state-level match if LGA not found
-                econ_row = econ_data[econ_data['State'].str.lower() == state.lower()]
+                econ_row = econ_data[econ_data['state'].str.lower() == state.lower()]
             
             if econ_row.empty:
                 logger.warning("No economic data found", state=state, lga=lga)
@@ -305,8 +305,8 @@ class RiskService:
             
             econ_data_row = econ_row.iloc[0]
             return {
-                'fuel_price': float(econ_data_row['Fuel_Price']),
-                'inflation': float(econ_data_row['Inflation'])
+                'fuel_price': float(econ_data_row['fuel_price']),
+                'inflation': float(econ_data_row['inflation_rate'])
             }
             
         except Exception as e:
@@ -522,6 +522,8 @@ class RiskService:
             climate_zone_region = None
             climate_recession_index = None
             climate_conflict_driver = None
+            impact_zone = None
+            conflict_correlation = None
             
             if climate_risk and climate_risk.get('in_climate_zone'):
                 climate_zone_region = climate_risk.get('region')
