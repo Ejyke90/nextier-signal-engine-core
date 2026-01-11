@@ -1,0 +1,162 @@
+[
+  {
+    "state": "Borno",
+    "lga": "Maiduguri",
+    "precipitation_anomaly": 15.3,
+    "flood_inundation_index": 8.2,
+    "vegetation_health_index": 0.62,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Adamawa",
+    "lga": "Yola",
+    "precipitation_anomaly": 22.7,
+    "flood_inundation_index": 25.4,
+    "vegetation_health_index": 0.48,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Bauchi",
+    "lga": "Bauchi",
+    "precipitation_anomaly": 18.9,
+    "flood_inundation_index": 31.2,
+    "vegetation_health_index": 0.41,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Taraba",
+    "lga": "Jalingo",
+    "precipitation_anomaly": 28.4,
+    "flood_inundation_index": 42.6,
+    "vegetation_health_index": 0.35,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Plateau",
+    "lga": "Jos",
+    "precipitation_anomaly": 19.2,
+    "flood_inundation_index": 22.8,
+    "vegetation_health_index": 0.51,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Benue",
+    "lga": "Makurdi",
+    "precipitation_anomaly": 31.5,
+    "flood_inundation_index": 38.7,
+    "vegetation_health_index": 0.39,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Nasarawa",
+    "lga": "Lafia",
+    "precipitation_anomaly": 24.1,
+    "flood_inundation_index": 28.3,
+    "vegetation_health_index": 0.44,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Zamfara",
+    "lga": "Gusau",
+    "precipitation_anomaly": 12.6,
+    "flood_inundation_index": 15.9,
+    "vegetation_health_index": 0.58,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Kaduna",
+    "lga": "Kaduna",
+    "precipitation_anomaly": 16.8,
+    "flood_inundation_index": 19.4,
+    "vegetation_health_index": 0.54,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Katsina",
+    "lga": "Katsina",
+    "precipitation_anomaly": 14.2,
+    "flood_inundation_index": 17.6,
+    "vegetation_health_index": 0.56,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Sokoto",
+    "lga": "Sokoto",
+    "precipitation_anomaly": 8.7,
+    "flood_inundation_index": 11.3,
+    "vegetation_health_index": 0.64,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Kebbi",
+    "lga": "Birnin Kebbi",
+    "precipitation_anomaly": 9.4,
+    "flood_inundation_index": 12.8,
+    "vegetation_health_index": 0.61,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Niger",
+    "lga": "Minna",
+    "precipitation_anomaly": 21.3,
+    "flood_inundation_index": 26.5,
+    "vegetation_health_index": 0.47,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Kogi",
+    "lga": "Lokoja",
+    "precipitation_anomaly": 27.9,
+    "flood_inundation_index": 35.2,
+    "vegetation_health_index": 0.42,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Lagos",
+    "lga": "Ikeja",
+    "precipitation_anomaly": 19.8,
+    "flood_inundation_index": 14.6,
+    "vegetation_health_index": 0.68,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Oyo",
+    "lga": "Ibadan",
+    "precipitation_anomaly": 17.4,
+    "flood_inundation_index": 16.2,
+    "vegetation_health_index": 0.59,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Enugu",
+    "lga": "Enugu",
+    "precipitation_anomaly": 20.6,
+    "flood_inundation_index": 18.9,
+    "vegetation_health_index": 0.55,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Delta",
+    "lga": "Asaba",
+    "precipitation_anomaly": 25.3,
+    "flood_inundation_index": 29.7,
+    "vegetation_health_index": 0.46,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Rivers",
+    "lga": "Port Harcourt",
+    "precipitation_anomaly": 23.8,
+    "flood_inundation_index": 21.4,
+    "vegetation_health_index": 0.52,
+    "last_updated": "2026-01-10"
+  },
+  {
+    "state": "Yobe",
+    "lga": "Damaturu",
+    "precipitation_anomaly": 11.9,
+    "flood_inundation_index": 13.7,
+    "vegetation_health_index": 0.60,
+    "last_updated": "2026-01-10"
+  }
+]

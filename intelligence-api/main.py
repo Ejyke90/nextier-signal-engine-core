@@ -3,10 +3,10 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import router
-from .utils import Config, configure_logging, get_logger
-from .services import LLMService, MessageBrokerService, ProcessingService
-from .repositories import MongoDBRepository
+from intelligence_api.api import router
+from intelligence_api.utils import Config, configure_logging, get_logger
+from intelligence_api.services import LLMService, MessageBrokerService, ProcessingService
+from intelligence_api.repositories import MongoDBRepository
 
 # Configure logging
 configure_logging(Config.LOG_LEVEL)

@@ -9,12 +9,26 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./scraper:/app
+      - ./:/app
+      - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=scraper
+      - LOG_LEVEL=INFO
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
     networks:
       - signal-engine-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - mongodb
+      - rabbitmq
 
   intelligence-api:
     build:
@@ -24,12 +38,28 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./intelligence-api:/app
+      - ./:/app
+      - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=intelligence-api
+      - LOG_LEVEL=INFO
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
+      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
     networks:
       - signal-engine-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - scraper
 
   predictor:
     build:
@@ -39,13 +69,106 @@ services:
     ports:
       - "8002:8002"
     volumes:
-      - ./predictor:/app
+      - ./:/app
+      - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=predictor
+      - LOG_LEVEL=INFO
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672/
     networks:
       - signal-engine-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - intelligence-api
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: ui-service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=ui
+      - LOG_LEVEL=INFO
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - scraper
+      - intelligence-api
+      - predictor
+
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./sample-data.js:/docker-entrypoint-initdb.d/sample-data.js:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=nextier_signal
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/nextier_signal --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: ["--auth"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./init-rabbitmq.sh:/init-rabbitmq.sh
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=password
+    networks:
+      - signal-engine-network
+    restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    entrypoint: ["/bin/bash", "-c", "docker-entrypoint.sh rabbitmq-server & sleep 20 && /init-rabbitmq.sh && wait"]
 
 networks:
   signal-engine-network:
     driver: bridge
+
+volumes:
+  mongodb_data:
+  rabbitmq_data:

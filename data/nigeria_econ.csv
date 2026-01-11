@@ -1,0 +1,120 @@
+State,LGA,Fuel_Price,Inflation
+Abia,Aba,650,18.5
+Abia,Umuahia,645,19.2
+Abuja,Abuja Municipal,680,22.1
+Abuja,Bwari,675,21.8
+Abuja,Gwagwalada,670,21.5
+Abuja,Kuje,665,20.9
+Abuja,Kwali,660,20.3
+Adamawa,Yola,620,24.7
+Adamawa,Mubi,615,25.1
+Adamawa,Numan,625,24.3
+Akwa Ibom,Uyo,635,17.9
+Akwa Ibom,Etinan,630,18.2
+Akwa Ibom,Ikot Ekpene,640,17.6
+Anambra,Onitsha,655,19.8
+Anambra,Awka,650,20.1
+Anambra,Nnewi,660,19.5
+Bauchi,Bauchi,590,26.3
+Bauchi,Azare,585,26.8
+Bauchi,Misau,595,25.9
+Bayelsa,Yenagoa,645,23.4
+Bayelsa,Brass,650,23.1
+Bayelsa,Nembe,640,23.7
+Benue,Makurdi,580,27.2
+Benue,Gboko,575,27.6
+Benue,Otukpo,585,26.8
+Borno,Maiduguri,570,28.9
+Borno,Bama,565,29.3
+Borno,Biu,575,28.5
+Cross River,Calabar,630,22.4
+Cross River,Ogoja,625,22.8
+Cross River,Obudu,635,22.1
+Delta,Warri,645,21.7
+Delta,Asaba,650,21.3
+Delta,Sapele,640,22.0
+Ebonyi,Abakaliki,615,20.8
+Ebonyi,Afikpo,610,21.2
+Ebonyi,Onueke,620,20.4
+Edo,Benin City,635,19.9
+Edo,Auchi,630,20.3
+Edo,Ekpoma,640,19.6
+Ekiti,Ado Ekiti,625,18.7
+Ekiti,Ikere Ekiti,620,19.1
+Ekiti,Otun Ekiti,630,18.3
+Enugu,Enugu,620,20.5
+Enugu,Nsukka,615,20.9
+Enugu,Agbani,625,20.1
+Gombe,Gombe,585,25.6
+Gombe,Kaltungo,580,26.0
+Gombe,Balanga,590,25.2
+Imo,Owerri,635,19.3
+Imo,Orlu,630,19.7
+Imo,Okigwe,640,18.9
+Jigawa,Dutse,560,24.1
+Jigawa,Hadejia,555,24.5
+Jigawa,Kazaure,565,23.7
+Kaduna,Kaduna,600,23.8
+Kaduna,Zaria,595,24.2
+Kaduna,Kafanchan,605,23.4
+Kano,Kano,590,22.6
+Kano,Kano Municipal,585,23.0
+Kano,Dala,595,22.2
+Katsina,Katsina,575,21.9
+Katsina,Daura,570,22.3
+Katsina,Funtua,580,21.5
+Kebbi,Birnin Kebbi,570,20.7
+Kebbi,Argungu,565,21.1
+Kebbi,Yauri,575,20.3
+Kogi,Lokoja,590,22.9
+Kogi,Okene,585,23.3
+Kogi,Kabba,595,22.5
+Kwara,Ilorin,605,19.4
+Kwara,Offa,600,19.8
+Kwara,Jebba,610,19.0
+Lagos,Ikeja,680,18.2
+Lagos,Lagos Island,685,17.8
+Lagos,Surulere,675,18.6
+Lagos,Ikeja,680,18.2
+Lagos,Badagry,670,18.9
+Lagos,Ikeja,680,18.2
+Lagos,Ikeja,680,18.2
+Lagos,Ikeja,680,18.2
+Lagos,Ikeja,680,18.2
+Lagos,Ikeja,680,18.2
+Nasarawa,Lafia,590,21.7
+Nasarawa,Keffi,585,22.1
+Nasarawa,Akwanga,595,21.3
+Niger,Minna,580,22.4
+Niger,Suleja,585,22.0
+Niger,Bida,575,22.8
+Ogun,Abeokuta,625,17.5
+Ogun,Ijebu-Ode,620,17.9
+Ogun,Sagamu,630,17.1
+Ondo,Akure,620,18.0
+Ondo,Owo,615,18.4
+Ondo,Okitipupa,625,17.6
+Osun,Osogbo,615,17.3
+Osun,Ife,610,17.7
+Osun,Ilesha,620,16.9
+Oyo,Ibadan,630,16.8
+Oyo,Oyo Town,625,17.2
+Oyo,Iseyin,635,16.4
+Plateau,Jos,580,24.9
+Plateau,Bokkos,575,25.3
+Plateau,Pankshin,585,24.5
+Rivers,Port Harcourt,655,21.2
+Rivers,Obio-Akpor,660,20.8
+Rivers,Bonny,650,21.6
+Sokoto,Sokoto,565,23.5
+Sokoto,Wurno,560,23.9
+Sokoto,Tambuwal,570,23.1
+Taraba,Jalingo,575,26.4
+Taraba,Wukari,570,26.8
+Taraba,Gembu,580,26.0
+Yobe,Damaturu,560,27.8
+Yobe,Potiskum,555,28.2
+Yobe,Gashua,565,27.4
+Zamfara,Gusau,570,25.1
+Zamfara,Kaura Namoda,565,25.5
+Zamfura,Tsafe,575,24.7

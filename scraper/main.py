@@ -2,10 +2,12 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import router
-from .utils import Config, configure_logging, get_logger
-from .services import ScrapingService, MessageBrokerService
-from .repositories import MongoDBRepository
+
+# Import internal modules
+from scraper.api import router
+from scraper.utils import Config, configure_logging, get_logger
+from scraper.services import ScrapingService, MessageBrokerService
+from scraper.repositories import MongoDBRepository
 
 # Configure logging
 configure_logging(Config.LOG_LEVEL)

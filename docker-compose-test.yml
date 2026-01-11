@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  scraper-test:
+    build:
+      context: ./scraper-test
+      dockerfile: Dockerfile
+    container_name: scraper-test-service
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./scraper-test:/app
+      - ./data-test:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - signal-test-network
+    restart: unless-stopped
+
+  intelligence-api-test:
+    build:
+      context: ./intelligence-api-test
+      dockerfile: Dockerfile
+    container_name: intelligence-api-test-service
+    ports:
+      - "8011:8001"
+    volumes:
+      - ./intelligence-api-test:/app
+      - ./data-test:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - signal-test-network
+    restart: unless-stopped
+
+networks:
+  signal-test-network:
+    driver: bridge

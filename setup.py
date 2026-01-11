@@ -1,0 +1,38 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="nextier-signal-engine-core",
+    version="0.1",
+    packages=[
+        'scraper',
+        'scraper.api',
+        'scraper.models',
+        'scraper.services',
+        'scraper.repositories',
+        'scraper.utils',
+        'intelligence_api',
+        'intelligence_api.api',
+        'intelligence_api.models',
+        'intelligence_api.services',
+        'intelligence_api.repositories',
+        'intelligence_api.utils',
+        'predictor',
+        'predictor.api',
+        'predictor.models',
+        'predictor.services',
+        'predictor.repositories',
+        'predictor.utils',
+        'ui'
+    ],
+    install_requires=[
+        'fastapi',
+        'uvicorn',
+        'pydantic',
+        'pymongo',
+        'pika',
+        'httpx',
+        'structlog',
+        'circuitbreaker',
+        'tenacity'
+    ],
+)
