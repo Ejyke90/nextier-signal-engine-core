@@ -177,6 +177,14 @@ function App() {
           zIndex: 1000
         }}
       >
+        <img 
+          src="/Gemini_Generated_Image_kg014vkg014vkg01.png" 
+          alt="NNVCD Logo" 
+          style={{ 
+            height: '30px', 
+            marginRight: '10px' 
+          }} 
+        />
         <h1 
           style={{ 
             color: '#ffffff',
