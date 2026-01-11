@@ -1,20 +1,60 @@
 import { useState, useEffect } from 'react'
 import SimpleHeatmap from './components/SimpleHeatmap'
 import LiveSignalTicker from './components/LiveSignalTicker'
-import NationalRiskOverview from './components/NationalRiskOverview'
-import ThreatStatusBar from './components/ThreatStatusBar'
+import KPICards from './components/KPICards'
+import RiskDistributionCharts from './components/RiskDistributionCharts'
+import CompactControlPanel from './components/CompactControlPanel'
 import './App.css'
 
 function App() {
   const [riskSignals, setRiskSignals] = useState([])
   const [mapInstance, setMapInstance] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [trendData, setTrendData] = useState([])
+  const [simulationParams, setSimulationParams] = useState({
+    fuel_price_index: 50,
+    inflation_rate: 50,
+    chatter_intensity: 50
+  })
 
   useEffect(() => {
     fetchRiskSignals()
-    const interval = setInterval(fetchRiskSignals, 5000)
+    fetchTrendData()
+    const interval = setInterval(() => {
+      fetchRiskSignals()
+      fetchTrendData()
+    }, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  const fetchTrendData = async () => {
+    try {
+      const response = await fetch('http://localhost:8002/api/v1/risk-overview')
+      const data = await response.json()
+      if (data.trend_data) {
+        setTrendData(data.trend_data)
+      } else {
+        // Fallback to generated data
+        generateTrendData()
+      }
+    } catch (error) {
+      console.error('Error fetching trend data:', error)
+      generateTrendData()
+    }
+  }
+
+  const generateTrendData = () => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (6 - i))
+      return {
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        risk: Math.floor(Math.random() * 40) + 40 + (i * 5),
+        incidents: Math.floor(Math.random() * 20) + 10
+      }
+    })
+    setTrendData(last7Days)
+  }
 
   const fetchRiskSignals = async () => {
     try {
@@ -77,40 +117,100 @@ function App() {
     }
   }
 
+  const handleZoomToFit = () => {
+    if (mapInstance) {
+      mapInstance.flyTo({
+        center: [8.6753, 9.0820], // Nigeria center
+        zoom: 6,
+        duration: 1500,
+        essential: true
+      })
+    }
+  }
+
+  const handleSimulation = async (params) => {
+    setSimulationParams(params)
+    try {
+      const response = await fetch('http://localhost:8002/api/v1/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      })
+      const data = await response.json()
+      if (data.features) {
+        // Update signals with simulated data
+        const simulatedSignals = data.features.map(f => f.properties)
+        setRiskSignals(simulatedSignals)
+      }
+      // Refresh trend data after simulation
+      fetchTrendData()
+    } catch (error) {
+      console.error('Simulation error:', error)
+    }
+  }
+
   const criticalCount = riskSignals.filter(s => s.risk_score >= 80).length
   const highCount = riskSignals.filter(s => s.risk_score >= 60 && s.risk_score < 80).length
   const avgRiskScore = riskSignals.length > 0 
     ? Math.round(riskSignals.reduce((sum, s) => sum + s.risk_score, 0) / riskSignals.length)
     : 0
+  
+  const affectedStates = new Set(riskSignals.map(s => s.state)).size
 
   return (
-    <div className="min-h-screen bg-bg-primary text-white">
-      <ThreatStatusBar 
-        avgRiskScore={avgRiskScore}
-        criticalCount={criticalCount}
-        totalSignals={riskSignals.length}
-      />
-      
-      <div className="grid grid-cols-12 h-[calc(100vh-60px)]">
-        <LiveSignalTicker 
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      {/* Top Row - KPI Cards (15% height) */}
+      <div className="h-[15vh] border-b border-gray-700/50">
+        <KPICards 
           signals={riskSignals}
-          onLocationClick={handleLocationClick}
-          loading={loading}
+          criticalCount={criticalCount}
+          affectedStates={affectedStates}
         />
+      </div>
+      
+      {/* Main Section - Bento Grid (75% height) */}
+      <div className="h-[75vh] flex">
+        {/* Left - Live Signal Ticker (25% width) */}
+        <div className="w-[25%] border-r border-gray-700/50">
+          <LiveSignalTicker 
+            signals={riskSignals}
+            onLocationClick={handleLocationClick}
+            loading={loading}
+          />
+        </div>
         
-        <div className="col-span-7 relative">
+        {/* Center - Map (45% width) */}
+        <div className="w-[45%] relative border-r border-gray-700/50">
           <SimpleHeatmap 
             signals={riskSignals}
+            onMapReady={setMapInstance}
           />
+          {/* Zoom to Fit Button */}
+          <button
+            onClick={handleZoomToFit}
+            className="absolute top-4 right-4 z-[1000] glassmorphism px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-all duration-300 flex items-center gap-2 border border-white/20"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+            </svg>
+            Zoom to Fit
+          </button>
         </div>
         
-        <div className="col-span-3 bg-bg-secondary border-l border-gray-800 overflow-y-auto">
-          <NationalRiskOverview 
+        {/* Right - National Risk Overview with Charts (30% width) */}
+        <div className="w-[30%] bg-gray-900/50">
+          <RiskDistributionCharts 
             signals={riskSignals}
-            criticalCount={criticalCount}
-            highCount={highCount}
+            trendData={trendData}
           />
         </div>
+      </div>
+      
+      {/* Bottom Section - Control Panel (10% height) */}
+      <div className="h-[10vh] border-t border-gray-700/50">
+        <CompactControlPanel 
+          onSimulation={handleSimulation}
+        />
       </div>
     </div>
   )

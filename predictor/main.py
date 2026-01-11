@@ -3,7 +3,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from predictor.api import router
+from predictor.api import router as api_router
+from predictor.api.risk_overview_endpoint import router as risk_overview_router
 from predictor.utils import Config, configure_logging, get_logger
 from predictor.services import RiskService, MessageBrokerService, PredictionService
 from predictor.repositories import MongoDBRepository
@@ -88,7 +89,8 @@ app.add_middleware(
 )
 
 # Include API routes
-app.include_router(router, prefix="/api/v1", tags=["predictor"])
+app.include_router(api_router, prefix="/api/v1")
+app.include_router(risk_overview_router, prefix="/api/v1", tags=["predictor"])
 
 # Health check endpoint
 @app.get("/health")

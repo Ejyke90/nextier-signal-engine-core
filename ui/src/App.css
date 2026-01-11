@@ -60,3 +60,50 @@ body {
 .pulse-high {
   animation: pulse-high 2s ease-in-out infinite;
 }
+
+/* Glassmorphism Effect */
+.glassmorphism {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glassmorphism:hover {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Slider Styling */
+input[type="range"].slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+input[type="range"].slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+input[type="range"].slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, #374151, #3b82f6);
+  height: 8px;
+  border-radius: 4px;
+}
+
+input[type="range"].slider::-moz-range-track {
+  background: linear-gradient(to right, #374151, #3b82f6);
+  height: 8px;
+  border-radius: 4px;
+}

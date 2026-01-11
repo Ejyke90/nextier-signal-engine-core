@@ -39,7 +39,7 @@ const HeatmapLayer = ({ points }) => {
   return null
 }
 
-const SimpleHeatmap = ({ signals }) => {
+const SimpleHeatmap = ({ signals, onMapReady }) => {
   const nigeriaLGACoords = {
     'Maiduguri': { lat: 11.8333, lng: 13.1571 },
     'Ikeja': { lat: 6.5964, lng: 3.3375 },
@@ -68,6 +68,11 @@ const SimpleHeatmap = ({ signals }) => {
         zoom={6}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
+        whenReady={(map) => {
+          if (onMapReady) {
+            onMapReady(map.target)
+          }
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
