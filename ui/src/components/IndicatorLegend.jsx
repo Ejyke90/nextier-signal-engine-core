@@ -18,6 +18,10 @@ const IndicatorLegend = memo(() => {
           <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-[10px]">🚨</span>
           <span className="text-gray-300">High Border Activity</span>
         </div>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-full bg-blue-400 flex items-center justify-center text-[10px] animate-pulse">🛡️</span>
+          <span className="text-gray-300">Verified Pulse (Multi-Source)</span>
+        </div>
       </div>
     </div>
   )

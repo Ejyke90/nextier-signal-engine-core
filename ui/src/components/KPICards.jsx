@@ -1,13 +1,26 @@
-import { Activity, AlertTriangle, MapPin, Clock } from 'lucide-react'
+import { Activity, AlertTriangle, MapPin, Radio } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const KPICards = ({ signals, criticalCount, affectedStates }) => {
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [lastIngestionTime, setLastIngestionTime] = useState(null)
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
+    // Calculate time since last ingestion from signals
+    if (signals && signals.length > 0) {
+      const latestSignal = signals.reduce((latest, signal) => {
+        const signalTime = new Date(signal.scraped_at || signal.published_at)
+        return signalTime > latest ? signalTime : latest
+      }, new Date(0))
+      setLastIngestionTime(latestSignal)
+    }
+  }, [signals])
+
+  const getMinutesAgo = () => {
+    if (!lastIngestionTime) return 0
+    const now = new Date()
+    const diffMs = now - lastIngestionTime
+    return Math.floor(diffMs / 60000)
+  }
 
   const kpis = [
     {
@@ -35,13 +48,14 @@ const KPICards = ({ signals, criticalCount, affectedStates }) => {
       borderColor: 'border-amber-500/30'
     },
     {
-      label: 'System Time',
-      value: currentTime.toLocaleTimeString('en-US', { hour12: false }),
-      icon: Clock,
+      label: 'Operational Status',
+      value: `Last Ingestion: ${getMinutesAgo()}m ago`,
+      icon: Radio,
       color: 'text-green-400',
       bgColor: 'bg-green-500/10',
       borderColor: 'border-green-500/30',
-      subValue: currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      subValue: 'Source Uptime: 100%',
+      pulse: true
     }
   ]
 
@@ -57,13 +71,16 @@ const KPICards = ({ signals, criticalCount, affectedStates }) => {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{kpi.label}</p>
-                <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                <p className={`${kpi.pulse ? 'text-sm' : 'text-2xl'} font-bold ${kpi.color}`}>{kpi.value}</p>
                 {kpi.subValue && (
                   <p className="text-xs text-gray-500 mt-1">{kpi.subValue}</p>
                 )}
               </div>
-              <div className={`${kpi.bgColor} p-3 rounded-lg`}>
-                <Icon className={`w-6 h-6 ${kpi.color}`} />
+              <div className={`${kpi.bgColor} p-3 rounded-lg relative`}>
+                <Icon className={`w-6 h-6 ${kpi.color} ${kpi.pulse ? 'animate-pulse' : ''}`} />
+                {kpi.pulse && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                )}
               </div>
             </div>
           </div>

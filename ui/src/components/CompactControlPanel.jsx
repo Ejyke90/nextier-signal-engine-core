@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RefreshCw, Zap, Activity, TrendingUp } from 'lucide-react'
+import { RefreshCw, Zap, Activity, TrendingUp, RotateCcw } from 'lucide-react'
 
 const CompactControlPanel = ({ onSimulation }) => {
   const [loading, setLoading] = useState(false)
@@ -17,6 +17,20 @@ const CompactControlPanel = ({ onSimulation }) => {
     if (onSimulation) {
       onSimulation(newSliders)
     }
+  }
+
+  const handleResetToBaseline = () => {
+    const baselineValues = {
+      fuel_price_index: 50,
+      inflation_rate: 50,
+      chatter_intensity: 50
+    }
+    setSliders(baselineValues)
+    if (onSimulation) {
+      onSimulation(baselineValues)
+    }
+    setStatusMessage('✓ Reset to baseline')
+    setTimeout(() => setStatusMessage(''), 2000)
   }
 
   const handleQuickAction = async (action) => {
@@ -87,6 +101,14 @@ const CompactControlPanel = ({ onSimulation }) => {
     <div className="h-full flex items-center justify-between px-6 bg-gray-900/50 backdrop-blur-sm">
       {/* Quick Actions */}
       <div className="flex items-center gap-3">
+        <button
+          onClick={handleResetToBaseline}
+          className="glassmorphism px-4 py-2 rounded-lg text-sm font-semibold text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2 border border-cyan-500/30"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset to Baseline
+        </button>
+        <div className="w-px h-8 bg-gray-700"></div>
         <button
           onClick={() => handleQuickAction('Scrape')}
           disabled={loading}

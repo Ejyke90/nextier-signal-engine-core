@@ -45,9 +45,16 @@ const LiveSignalTicker = ({ signals, onLocationClick, loading }) => {
                   <div className="flex items-center space-x-2">
                     <h4 className="text-white font-semibold text-sm">{signal.lga}, {signal.state}</h4>
                     {signal.veracity_score > 0.8 && (
-                      <div className="flex items-center space-x-1 bg-blue-500/20 border border-blue-500/50 px-2 py-0.5 rounded-full">
+                      <div 
+                        className="flex items-center space-x-1 bg-blue-500/20 border border-blue-500/50 px-2 py-0.5 rounded-full group relative cursor-help"
+                        title="Triangulated across multiple credible sources"
+                      >
                         <Shield className="w-3 h-3 text-blue-400" />
                         <span className="text-blue-400 text-xs font-semibold">Verified</span>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-blue-500/30">
+                          Triangulated across multiple credible sources
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                        </div>
                       </div>
                     )}
                   </div>
