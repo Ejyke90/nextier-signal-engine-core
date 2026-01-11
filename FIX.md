@@ -1,5 +1,5 @@
 # Code Review Fixes - Implementation Guide
-## Nextier Signal Engine
+## nextier-nigeria-violent-conflicts-database
 
 **Review Date:** 2026-01-11  
 **Status:** APPROVED WITH CONDITIONS  

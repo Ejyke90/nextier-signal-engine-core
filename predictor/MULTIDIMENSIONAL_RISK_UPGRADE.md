@@ -1,8 +1,8 @@
-# Multidimensional Risk Indicators - Implementation Documentation
+# nextier-nigeria-violent-conflicts-database - Multidimensional Risk Indicators - Implementation Documentation
 
 ## Overview
 
-This upgrade transforms the Nextier Signal Engine Predictor from a basic risk scoring system into a **Geospatial Early Warning System** by integrating three critical dimensions of 2026 Nigeria conflict patterns:
+This upgrade transforms the nextier-nigeria-violent-conflicts-database Signal Engine Predictor from a basic risk scoring system into a **Geospatial Early Warning System** by integrating three critical dimensions of 2026 Nigeria conflict patterns:
 
 1. **Climate-Conflict Nexus** - Flooding-induced displacement and resource competition
 2. **Illicit Economic Activity** - Mining proximity and informal taxation
@@ -216,7 +216,7 @@ All new fields have default values, ensuring backward compatibility with existin
 
 ## Conclusion
 
-This upgrade transforms the Nextier Signal Engine from a **news aggregator** into a **Geospatial Early Warning System** that:
+This upgrade transforms the nextier-nigeria-violent-conflicts-database Signal Engine from a **news aggregator** into a **Geospatial Early Warning System** that:
 
 ✓ Integrates climate science with conflict analysis  
 ✓ Tracks illicit economic drivers of violence  

@@ -1,4 +1,4 @@
-# Deployment Guide - Nextier Signal Engine Dashboard
+# Deployment Guide - Nextier Nigeria Violent Conflicts Database Dashboard
 
 ## 🚀 Quick Start
 
@@ -123,8 +123,8 @@ sudo usermod -aG docker $USER
 
 2. **Clone Repository**
 ```bash
-git clone https://github.com/your-org/nextier-signal-engine-core.git
-cd nextier-signal-engine-core
+git clone https://github.com/your-org/nextier-nigeria-violent-conflicts-database.git
+cd nextier-nigeria-violent-conflicts-database
 ```
 
 3. **Deploy**

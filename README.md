@@ -1,4 +1,4 @@
-# Nextier Signal Engine Core
+# Nextier Nigeria Violent Conflicts Database
 
 A modern, microservices-based Python backend using FastAPI for real-time signal processing and analysis. The system processes news articles to generate conflict risk signals using AI/ML analysis.
 
@@ -29,7 +29,7 @@ This project consists of three microservices:
 ## Project Structure
 
 ```
-nextier-signal-engine-core/
+nextier-nigeria-violent-conflicts-database/
 ├── docker-compose.yml
 ├── pytest.ini
 ├── requirements-test.txt
@@ -78,8 +78,8 @@ nextier-signal-engine-core/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Ejyke90/nextier-signal-engine-core.git
-cd nextier-signal-engine-core
+git clone https://github.com/Ejyke90/nextier-nigeria-violent-conflicts-database.git
+cd nextier-nigeria-violent-conflicts-database
 ```
 
 ### 2. Build and Run All Services
