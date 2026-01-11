@@ -187,3 +187,22 @@ class MongoDBRepository:
         except PyMongoError as e:
             logger.error("Failed to retrieve uncategorized articles", error=str(e))
             return []
+    
+    def get_economic_data(self) -> pd.DataFrame:
+        """Get economic data from MongoDB as DataFrame"""
+        try:
+            data = list(self.economic_data_collection.find())
+            if data:
+                # Convert ObjectId to string and remove it from DataFrame
+                for item in data:
+                    if '_id' in item:
+                        item['_id'] = str(item['_id'])
+                df = pd.DataFrame(data)
+                logger.info("Retrieved economic data", rows=len(df))
+                return df
+            else:
+                logger.warning("No economic data found in MongoDB")
+                return pd.DataFrame()
+        except PyMongoError as e:
+            logger.error("Failed to retrieve economic data", error=str(e))
+            return pd.DataFrame()

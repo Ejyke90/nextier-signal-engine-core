@@ -313,6 +313,28 @@ class RiskService:
             logger.error("Error finding economic data", error=str(e))
             return None
     
+    # Map event types to categories and confidence scores
+    def get_category_confidence(self, event_type: str) -> tuple[str, int]:
+        """Map event type to category and confidence score"""
+        event_type_lower = event_type.lower()
+        
+        category_mapping = {
+            'clash': ('Organized Banditry', 94),
+            'attack': ('Organized Banditry', 91),
+            'kidnapping': ('Kidnapping-for-Ransom', 87),
+            'protest': ('Sectarian Insurgency', 78),
+            'vandalism': ('Organized Banditry', 82),
+            'robbery': ('Organized Banditry', 89),
+            'bombing': ('Sectarian Insurgency', 93),
+            'terrorism': ('Sectarian Insurgency', 95),
+            'farmer_herder': ('Farmer-Herder Clashes', 92),
+            'communal': ('Farmer-Herder Clashes', 88),
+            'ethnic': ('Sectarian Insurgency', 85),
+            'religious': ('Sectarian Insurgency', 86)
+        }
+        
+        return category_mapping.get(event_type_lower, ('Unknown', 0))
+
     def calculate_risk_score(self, event: Dict[str, Any], econ_data: pd.DataFrame) -> Optional[RiskSignal]:
         """
         Calculate risk score based on event type, economic indicators, and multidimensional factors
@@ -761,6 +783,9 @@ class RiskService:
             else:
                 trigger_reason = f"{risk_level} Risk: Standard calculation"
             
+            # Get category and confidence based on event type
+            category, confidence = self.get_category_confidence(event.get('event_type', 'unknown'))
+            
             return {
                 'event_type': event.get('event_type', 'unknown'),
                 'state': state,
@@ -771,6 +796,8 @@ class RiskService:
                 'risk_score': round(risk_score, 1),
                 'risk_level': risk_level,
                 'status': status,
+                'category': category,
+                'confidence': confidence,
                 'source_title': event.get('source_title', ''),
                 'source_url': event.get('source_url', ''),
                 'trigger_reason': trigger_reason,
