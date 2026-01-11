@@ -34,6 +34,16 @@ class RiskSignal(BaseModel):
     group_affiliation: Optional[str] = Field(default=None)
     sophisticated_ied_usage: bool = Field(default=False)
     
+    # Strategic Deep Indicators
+    climate_vulnerability: Optional[float] = Field(default=None, ge=0, le=1)
+    mining_density: Optional[float] = Field(default=None, ge=0, le=1)
+    migration_pressure: Optional[float] = Field(default=None, ge=0, le=1)
+    poverty_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    high_escalation_potential: bool = Field(default=False)
+    is_farmer_herder_conflict: bool = Field(default=False)
+    surge_detected: bool = Field(default=False)
+    surge_percentage_increase: Optional[float] = Field(default=None)
+    
     calculated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -81,6 +91,16 @@ class RiskSignalResponse(BaseModel):
     border_permeability_score: Optional[float] = None
     group_affiliation: Optional[str] = None
     sophisticated_ied_usage: bool = False
+    
+    # Strategic Deep Indicators
+    climate_vulnerability: Optional[float] = None
+    mining_density: Optional[float] = None
+    migration_pressure: Optional[float] = None
+    poverty_rate: Optional[float] = None
+    high_escalation_potential: bool = False
+    is_farmer_herder_conflict: bool = False
+    surge_detected: bool = False
+    surge_percentage_increase: Optional[float] = None
     
     calculated_at: str
 

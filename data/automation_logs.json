@@ -1,0 +1,74 @@
+[
+  {
+    "timestamp": "2026-01-11T10:26:00.774003",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T10:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:26:31.472202",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:26:45.076454",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T10:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:26:52.247030",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:26:54.088648",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T10:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:29:29.599964",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:29:48.218037",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T10:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T10:30:01.403763",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 1.359575,
+      "db_success": true,
+      "mq_success": true
+    }
+  }
+]

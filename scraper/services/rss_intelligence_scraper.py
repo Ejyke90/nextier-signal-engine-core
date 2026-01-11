@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 import asyncio
+import httpx
 from scraper.services.base_scraper import BaseScraper
 from scraper.utils import get_logger, Config
 from scraper.utils.rss_parser import RSSParser

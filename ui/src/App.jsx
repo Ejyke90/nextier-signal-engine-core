@@ -6,6 +6,7 @@ import RiskDistributionCharts from './components/RiskDistributionCharts'
 import CompactControlPanel from './components/CompactControlPanel'
 import SignalDetailPanel from './components/SignalDetailPanel'
 import Toast from './components/Toast'
+import HighRiskAlertMonitor from './components/HighRiskAlertMonitor'
 import { API_CONFIG, POLLING_INTERVAL, NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_THRESHOLDS } from './constants'
 import './App.css'
 
@@ -262,6 +263,9 @@ function App() {
           onClose={() => setError(null)}
         />
       )}
+      
+      {/* High-Risk Alert Monitor - Instant Webhooks */}
+      <HighRiskAlertMonitor />
     </div>
   )
 }

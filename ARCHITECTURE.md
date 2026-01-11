@@ -2,40 +2,45 @@
 
 ## Overview
 
-The Nextier Signal Engine is a modern microservices architecture designed for real-time signal processing and analysis. The system processes news articles to generate conflict risk signals using AI/ML analysis.
+The Nextier Signal Engine is a **proactive, automated** microservices system for real-time conflict monitoring. The system autonomously scrapes news sources every 15 minutes, extracts events via LLM, calculates risk scores, and triggers instant alerts for critical situations.
 
-## Architecture Principles
+## Core Architecture Themes
 
-### 1. Microservices Architecture
-- **Service Independence**: Each service can be developed, deployed, and scaled independently
-- **Single Responsibility**: Each service has a well-defined business capability
-- **Loose Coupling**: Services communicate through well-defined APIs and message queues
+### 1. Proactive vs Reactive
+- **Automated Execution**: Background scheduler eliminates manual intervention
+- **Continuous Monitoring**: 15-minute scraping cycles ensure fresh intelligence
+- **Instant Alerting**: High-risk detection triggers immediate notifications
+- **System Heartbeat**: Real-time status monitoring for operational awareness
 
 ### 2. Event-Driven Architecture
-- **Asynchronous Communication**: Services communicate via message queues for scalability
-- **Event Sourcing**: All state changes are captured as events
-- **Decoupled Processing**: Producers and consumers are independent
+- **Asynchronous Communication**: RabbitMQ decouples service dependencies
+- **Message Queues**: Scalable processing pipeline (articles → events → signals)
+- **Webhook Notifications**: File-based alerts for high-risk articles (score > 85)
+- **State Management**: Shared `/data` volume for cross-service coordination
 
 ### 3. Clean Architecture
-- **Layered Design**: Clear separation between API, business logic, and data access
-- **Dependency Injection**: Inversion of control for testability
-- **Domain-Centric**: Business logic is isolated from infrastructure concerns
+- **Layered Design**: API → Services → Repositories → Data
+- **Dependency Injection**: Testable, modular components
+- **Scheduler Integration**: Background tasks within application lifecycle
 
 ## System Components
 
 ### Core Services
 
-#### 1. Scraper Service
-**Responsibility**: News article collection and preprocessing
+#### 1. Scraper Service (Automated)
+**Responsibility**: Autonomous news collection with scheduled execution
 
 **Key Features**:
-- Web scraping with circuit breaker protection
-- HTTP connection pooling for performance
-- Article deduplication and validation
-- Message publishing to RabbitMQ
+- **Background Scheduler**: APScheduler with 15-min cron trigger (`*/15 * * * *`)
+- **Automated Scraping**: Multi-source collection without manual intervention
+- **High-Risk Detection**: Identifies articles with risk_score > 85
+- **Webhook Alerts**: Writes critical alerts to `/data/high_risk_alerts.json`
+- **Automation Logging**: Tracks execution history in `/data/automation_logs.json`
+- **Deduplication**: SHA-256 fingerprinting prevents duplicate processing
+- **Circuit Breaker**: Protects against source failures
 
 **Technology Stack**:
-- FastAPI for REST APIs
+- FastAPI + APScheduler for automated execution
 - BeautifulSoup for web scraping
 - Pika for RabbitMQ integration
 - PyMongo for MongoDB access
@@ -89,36 +94,46 @@ The Nextier Signal Engine is a modern microservices architecture designed for re
 - `parsed_events`: Events from intelligence API to predictor
 - `risk_signals`: Risk signals for downstream consumers
 
-## Data Flow Architecture
+## Data Flow Architecture (Automated)
 
 ```mermaid
-graph TD
-    A[News Sources] --> B[Scraper Service]
-    B --> C[RabbitMQ: scraped_articles]
-    C --> D[Intelligence API Service]
-    D --> E[RabbitMQ: parsed_events]
-    E --> F[Predictor Service]
-    F --> G[RabbitMQ: risk_signals]
+flowchart LR
+    A[⏰ Scheduler] -->|15min| B[🔍 Scraper]
+    N[📰 News] --> B
+    B -->|articles| Q1[Queue]
+    B -->|high risk| W[🚨 Alerts]
     
-    B --> H[MongoDB: raw_articles]
-    D --> I[MongoDB: parsed_events]
-    F --> J[MongoDB: risk_signals]
+    Q1 --> C[🧠 Intelligence API]
+    C -->|events| Q2[Queue]
     
-    K[Economic Data] --> F
-    K --> L[MongoDB: economic_data]
+    Q2 --> D[📊 Predictor]
+    E["🌡️ Climate
+    ⛏️ Mining
+    🗺️ Border
+    💰 Economic"] --> D
+    D -->|signals| Q3[Queue]
+    
+    W --> UI[🖥️ Dashboard]
+    Q3 --> UI
+    
+    B --> DB[(MongoDB)]
+    C --> DB
+    D --> DB
 ```
 
 ## Service Communication Patterns
 
 ### 1. Synchronous Communication
-- **REST APIs**: For administrative and query operations
+- **REST APIs**: Administrative and query operations
 - **Health Checks**: Service dependency monitoring
-- **Configuration**: Runtime parameter updates
+- **Scheduler Status**: Real-time execution state (`/api/v1/scheduler/status`)
+- **Automation Logs**: Historical execution data (`/api/v1/automation/logs`)
 
 ### 2. Asynchronous Communication
-- **Message Queues**: For data processing pipelines
-- **Event Streaming**: For real-time processing
-- **Batch Processing**: For efficient resource utilization
+- **Message Queues**: Data processing pipeline (RabbitMQ)
+- **File-Based Webhooks**: High-risk alerts via shared volume
+- **Scheduled Execution**: Background tasks via APScheduler
+- **State Polling**: UI polls for updates every 5-10 seconds
 
 ## Resilience Patterns
 

@@ -1,25 +1,33 @@
 # Nextier Nigeria Violent Conflicts Database
 
-A modern, microservices-based Python backend using FastAPI for real-time signal processing and analysis. The system processes news articles to generate conflict risk signals using AI/ML analysis.
+A **proactive, automated** conflict monitoring system using microservices, AI/ML analysis, and real-time alerting. The system autonomously scrapes news sources every 15 minutes, extracts conflict events, calculates risk scores, and triggers instant alerts for critical situations.
 
-## Architecture Overview
+## Key Features
 
-The system has been completely refactored with modern architecture patterns:
+- **🤖 Automated Scraping**: Background scheduler runs every 15 minutes (no manual intervention)
+- **🚨 Instant Alerts**: High-risk articles (score > 85) trigger immediate UI notifications
+- **💓 System Heartbeat**: Real-time monitoring of scheduler status and next scrape time
+- **📊 Proactive Intelligence**: Continuous monitoring with automated risk assessment
+- **🔄 Event-Driven**: Asynchronous processing pipeline via RabbitMQ
+- **📈 Real-Time Dashboard**: Live updates with automated state management
 
-- **Message Broker Communication**: RabbitMQ for asynchronous service communication
-- **Document Storage**: MongoDB for scalable data persistence
-- **Modular Design**: Clean architecture with dependency injection
-- **Resilience Patterns**: Circuit breakers, retry mechanisms, and connection pooling
-- **Observability**: Structured logging and comprehensive health checks
-- **Security**: Enhanced input validation and CORS configuration
+## Architecture Themes
+
+- **Proactive vs Reactive**: Automated background tasks replace manual button clicks
+- **Event-Driven Communication**: RabbitMQ for asynchronous service orchestration
+- **Clean Architecture**: Layered design with dependency injection
+- **Resilience Patterns**: Circuit breakers, retry mechanisms, connection pooling
+- **Observability**: Structured logging, health checks, automation logs
+- **Security**: Input validation, CORS, sanitized error handling
 
 ## Services
 
-This project consists of three microservices:
+This project consists of three microservices plus a React dashboard:
 
-1. **Scraper Service** (Port 8000) - News article collection and preprocessing
+1. **Scraper Service** (Port 8000) - Automated news collection with 15-min scheduler
 2. **Intelligence API Service** (Port 8001) - AI-powered event extraction using LLM
 3. **Predictor Service** (Port 8002) - Risk scoring and economic data analysis
+4. **UI Dashboard** (Port 8080) - Real-time monitoring with system heartbeat
 
 ## Infrastructure Services
 
@@ -112,9 +120,10 @@ docker-compose down
 #### Core Endpoints
 - `GET /` - Welcome message
 - `GET /health` - Enhanced health check with MongoDB and RabbitMQ status
-- `GET /api/v1/scrape` - Trigger news scraping (async)
-- `POST /api/v1/scrape` - Trigger news scraping (sync)
+- `GET /api/v1/scrape` - Manual scraping trigger (legacy - automated by scheduler)
 - `GET /api/v1/articles` - Retrieve scraped articles
+- `GET /api/v1/scheduler/status` - **Scheduler status and next run time**
+- `GET /api/v1/automation/logs` - **Automation execution logs**
 
 #### Documentation
 - `GET /docs` - Interactive API documentation (Swagger UI)
@@ -255,13 +264,15 @@ pytest -m slow
 - **Integration Tests**: Test service interactions and data flows
 - **Performance Tests**: Test system behavior with large datasets
 
-## Data Flow
+## Data Flow (Automated)
 
-1. **Scraper Service** collects news articles and publishes them to RabbitMQ
-2. **Intelligence API Service** consumes articles, processes them with LLM, and extracts events
-3. **Predictor Service** consumes events, calculates risk scores using economic data
-4. **MongoDB** stores all data (articles, events, risk signals)
-5. **RabbitMQ** facilitates asynchronous communication between services
+1. **Background Scheduler** (every 15 min) triggers automated scraping
+2. **Scraper Service** collects articles → publishes to RabbitMQ → saves to MongoDB
+3. **High-Risk Detection** checks articles for risk_score > 85 → writes alerts to `/data/high_risk_alerts.json`
+4. **Intelligence API Service** consumes articles → LLM extraction → publishes events
+5. **Predictor Service** consumes events → calculates risk scores → publishes signals
+6. **UI Dashboard** polls for updates → displays system heartbeat → shows instant alerts
+7. **Automation Logs** track all scheduled executions in `/data/automation_logs.json`
 
 ## Monitoring & Observability
 

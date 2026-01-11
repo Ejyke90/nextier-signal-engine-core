@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { RefreshCw, Zap, Activity, TrendingUp, RotateCcw } from 'lucide-react'
+import { Zap, Activity, TrendingUp, RotateCcw } from 'lucide-react'
+import SystemHeartbeat from './SystemHeartbeat'
 
 const CompactControlPanel = ({ onSimulation }) => {
   const [loading, setLoading] = useState(false)
@@ -42,9 +43,6 @@ const CompactControlPanel = ({ onSimulation }) => {
       let method = 'GET'
       
       switch(action) {
-        case 'Scrape':
-          endpoint = 'http://localhost:8000/api/v1/scrape'
-          break
         case 'Analyze':
           endpoint = 'http://localhost:8001/api/v1/analyze'
           method = 'POST'
@@ -99,6 +97,9 @@ const CompactControlPanel = ({ onSimulation }) => {
 
   return (
     <div className="h-full flex items-center justify-between px-6 bg-gray-900/50 backdrop-blur-sm">
+      {/* System Heartbeat - Replaces Manual Scrape Button */}
+      <SystemHeartbeat />
+      
       {/* Quick Actions */}
       <div className="flex items-center gap-3">
         <button
@@ -109,14 +110,6 @@ const CompactControlPanel = ({ onSimulation }) => {
           Reset to Baseline
         </button>
         <div className="w-px h-8 bg-gray-700"></div>
-        <button
-          onClick={() => handleQuickAction('Scrape')}
-          disabled={loading}
-          className="glassmorphism px-4 py-2 rounded-lg text-sm font-semibold text-white hover:bg-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Scrape
-        </button>
         <button
           onClick={() => handleQuickAction('Analyze')}
           disabled={loading}

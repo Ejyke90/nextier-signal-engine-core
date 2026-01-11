@@ -10,7 +10,7 @@ sys.path.insert(0, '/app')
 # Import internal modules with absolute imports
 from scraper.api import router
 from scraper.utils import Config, configure_logging, get_logger
-from scraper.services import ScrapingService, MessageBrokerService
+from scraper.services import ScrapingService, MessageBrokerService, AutomationScheduler
 from scraper.repositories import MongoDBRepository
 
 # Configure logging
@@ -39,15 +39,34 @@ async def lifespan(app: FastAPI):
         scraping_service = ScrapingService()
         app.state.scraping_service = scraping_service
         
+        # Start automated background scheduler
+        automation_scheduler = AutomationScheduler()
+        automation_scheduler.start()
+        app.state.automation_scheduler = automation_scheduler
+        logger.info("🤖 Automated background scheduler started")
+        
         logger.info("All services initialized successfully")
         
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}")
+        raise
     
     yield
     
     # Cleanup
     logger.info("Shutting down Scraper Service")
+    try:
+        if hasattr(app.state, 'automation_scheduler'):
+            app.state.automation_scheduler.stop()
+            logger.info("Automation scheduler stopped")
+        if hasattr(app.state, 'scraping_service'):
+            await app.state.scraping_service.close()
+        if hasattr(app.state, 'message_broker'):
+            app.state.message_broker.close()
+        if hasattr(app.state, 'mongodb_repo'):
+            app.state.mongodb_repo.close()
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
 
 # Create FastAPI app
 app = FastAPI(

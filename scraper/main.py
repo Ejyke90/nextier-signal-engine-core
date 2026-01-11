@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import internal modules
 from scraper.api import router
 from scraper.utils import Config, configure_logging, get_logger
-from scraper.services import ScrapingService, MessageBrokerService
+from scraper.services import ScrapingService, MessageBrokerService, AutomationScheduler
 from scraper.repositories import MongoDBRepository
 
 # Configure logging
@@ -24,12 +24,13 @@ except ValueError as e:
 scraping_service = None
 message_broker = None
 mongodb_repo = None
+automation_scheduler = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
-    global scraping_service, message_broker, mongodb_repo
+    global scraping_service, message_broker, mongodb_repo, automation_scheduler
     
     logger.info("Starting scraper service")
     
@@ -39,6 +40,12 @@ async def lifespan(app: FastAPI):
         message_broker = MessageBrokerService()
         mongodb_repo = MongoDBRepository()
         logger.info("Services initialized successfully")
+        
+        # Start automated background scheduler
+        automation_scheduler = AutomationScheduler()
+        automation_scheduler.start()
+        logger.info("🤖 Automated background scheduler started")
+        
     except Exception as e:
         logger.error("Failed to initialize services", error=str(e))
         raise
@@ -48,6 +55,9 @@ async def lifespan(app: FastAPI):
     # Cleanup
     logger.info("Shutting down scraper service")
     try:
+        if automation_scheduler:
+            automation_scheduler.stop()
+            logger.info("Automation scheduler stopped")
         if scraping_service:
             await scraping_service.close()
         if message_broker:

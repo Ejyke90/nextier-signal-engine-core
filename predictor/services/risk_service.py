@@ -16,6 +16,8 @@ class RiskService:
         self.climate_data = self._load_climate_data()
         self.mining_data = self._load_mining_data()
         self.border_data = self._load_border_data()
+        self.strategic_indicators = self._load_strategic_indicators()
+        self.previous_risk_scores = {}  # For surge detection
         
         self.event_type_scores = {
             'clash': 40,
@@ -72,6 +74,44 @@ class RiskService:
             logger.warning(f"Could not load border data: {e}")
             return []
     
+    def _load_strategic_indicators(self) -> pd.DataFrame:
+        """Load strategic indicators CSV with normalized state-level data"""
+        try:
+            data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'nigeria_econ_indicators.csv')
+            df = pd.read_csv(data_path)
+            logger.info(f"Loaded strategic indicators for {len(df)} states")
+            return df
+        except Exception as e:
+            logger.warning(f"Could not load strategic indicators: {e}")
+            return pd.DataFrame()
+    
+    def get_strategic_indicators(self, state: str) -> Optional[Dict[str, float]]:
+        """Get strategic indicators for a given state"""
+        try:
+            if self.strategic_indicators.empty:
+                return None
+            
+            state_data = self.strategic_indicators[
+                self.strategic_indicators['state'].str.lower() == state.lower()
+            ]
+            
+            if state_data.empty:
+                logger.warning(f"No strategic indicators found for state: {state}")
+                return None
+            
+            row = state_data.iloc[0]
+            return {
+                'poverty_rate': float(row['poverty_rate']),
+                'inflation_rate': float(row['inflation_rate']),
+                'unemployment': float(row['unemployment']),
+                'mining_density': float(row['mining_density']),
+                'climate_vulnerability': float(row['climate_vulnerability']),
+                'migration_pressure': float(row['migration_pressure'])
+            }
+        except Exception as e:
+            logger.error(f"Error getting strategic indicators: {e}")
+            return None
+    
     def _haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         """Calculate distance between two points in kilometers using Haversine formula"""
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
@@ -126,6 +166,50 @@ class RiskService:
         # This is a placeholder for caching logic
         # In practice, we'd cache the economic data lookup
         return None
+    
+    def detect_surge(self, state: str, lga: str, current_risk_score: float) -> Dict[str, Any]:
+        """Detect if risk score has surged by >20% in current scrape window"""
+        location_key = f"{state}:{lga}"
+        surge_detected = False
+        percentage_increase = 0.0
+        previous_score = None
+        
+        if location_key in self.previous_risk_scores:
+            previous_score = self.previous_risk_scores[location_key]
+            percentage_increase = ((current_risk_score - previous_score) / previous_score) * 100
+            
+            if percentage_increase > 20:
+                surge_detected = True
+                logger.warning(
+                    f"SURGE DETECTED: {state}/{lga} risk increased by {percentage_increase:.1f}% "
+                    f"({previous_score:.1f} -> {current_risk_score:.1f})"
+                )
+        
+        # Update tracking
+        self.previous_risk_scores[location_key] = current_risk_score
+        
+        return {
+            'surge_detected': surge_detected,
+            'percentage_increase': round(percentage_increase, 1),
+            'previous_score': previous_score,
+            'current_score': current_risk_score
+        }
+    
+    def is_farmer_herder_conflict(self, event: Dict[str, Any]) -> bool:
+        """Determine if event is a Farmer-Herder conflict based on keywords"""
+        text_to_check = (
+            event.get('source_title', '') + ' ' + 
+            event.get('content', '') + ' ' + 
+            event.get('event_type', '')
+        ).lower()
+        
+        farmer_herder_keywords = [
+            'farmer', 'herder', 'herdsmen', 'fulani', 'pastoralist',
+            'cattle', 'grazing', 'farmland', 'crop', 'livestock',
+            'communal clash', 'land dispute'
+        ]
+        
+        return any(keyword in text_to_check for keyword in farmer_herder_keywords)
     
     def find_economic_data(self, event: Dict[str, Any], econ_data: pd.DataFrame) -> Optional[Dict[str, float]]:
         """Find matching economic data for an event"""
@@ -211,9 +295,24 @@ class RiskService:
             if event_type == 'clash' and inflation > Config.INFLATION_THRESHOLD:
                 base_score = max(base_score, 81)
             
+            # === STRATEGIC DEEP INDICATORS ===
+            
+            # Get state-level strategic indicators
+            strategic_data = self.get_strategic_indicators(state)
+            climate_vulnerability = None
+            mining_density = None
+            migration_pressure = None
+            poverty_rate = None
+            
+            if strategic_data:
+                climate_vulnerability = strategic_data['climate_vulnerability']
+                mining_density = strategic_data['mining_density']
+                migration_pressure = strategic_data['migration_pressure']
+                poverty_rate = strategic_data['poverty_rate']
+            
             # === MULTIDIMENSIONAL INDICATORS ===
             
-            # 1. CLIMATE MULTIPLIER: Flooding-induced displacement
+            # 1. CLIMATE STRESS MULTIPLIER: Using climate_vulnerability from strategic indicators
             climate_data = self.find_climate_data(state, lga)
             flood_inundation = None
             precipitation_anomaly = None
@@ -234,11 +333,22 @@ class RiskService:
                     )
                     logger.info(f"Climate multiplier applied: {original_score} -> {base_score}")
             
-            # 2. MINING MULTIPLIER: Illicit economic activity
+            # DEEP INDICATOR: Climate Stress Multiplier
+            if climate_vulnerability and climate_vulnerability > 0.7:
+                climate_stress_bonus = climate_vulnerability * 15  # Up to 15 points
+                base_score += climate_stress_bonus
+                trigger_reasons.append(
+                    f"High Climate Vulnerability ({climate_vulnerability*100:.0f}%) - "
+                    f"environmental stress amplifies conflict risk"
+                )
+                logger.info(f"Climate stress multiplier applied: +{climate_stress_bonus:.1f} points")
+            
+            # 2. FUNDING RISK MULTIPLIER: Illicit economic activity using mining_density
             mining_site = self.find_nearest_mining_site(event)
             mining_proximity = None
             mining_site_name = None
             high_funding_potential = False
+            high_escalation_potential = False
             informal_taxation = None
             
             if mining_site:
@@ -255,6 +365,17 @@ class RiskService:
                         f"{mining_site_name} (informal taxation: {informal_taxation*100:.0f}%)"
                     )
                     logger.info(f"Mining multiplier applied: proximity {mining_proximity}km")
+            
+            # DEEP INDICATOR: Funding Risk Multiplier using mining_density
+            if mining_density and mining_density > 0.6:
+                funding_risk_bonus = mining_density * 20  # Up to 20 points
+                base_score += funding_risk_bonus
+                high_escalation_potential = True
+                trigger_reasons.append(
+                    f"High Escalation Potential due to Illicit Funding - "
+                    f"Mining density {mining_density*100:.0f}% enables armed group financing"
+                )
+                logger.info(f"Funding risk multiplier applied: +{funding_risk_bonus:.1f} points")
             
             # 3. SAHELIAN MULTIPLIER: Transnational jihadist expansion
             border_data = self.find_border_data(state, lga)
@@ -289,8 +410,31 @@ class RiskService:
                     base_score += 10
                     trigger_reasons.append(f"High border activity - {group_affiliation}")
             
+            # DEEP INDICATOR: Farmer-Herder Conflict Logic with Migration Pressure
+            is_farmer_herder = self.is_farmer_herder_conflict(event)
+            if is_farmer_herder and migration_pressure and migration_pressure > 0.5:
+                migration_multiplier = 1 + migration_pressure  # 1.5x to 2.0x multiplier
+                original_score = base_score
+                base_score = base_score * migration_multiplier
+                trigger_reasons.append(
+                    f"Farmer-Herder Conflict amplified by Migration Pressure ({migration_pressure*100:.0f}%) - "
+                    f"pastoralist displacement intensifies land competition"
+                )
+                logger.info(f"Farmer-Herder multiplier applied: {original_score:.1f} -> {base_score:.1f}")
+            
             # Ensure score is within bounds
             risk_score = max(0, min(100, base_score))
+            
+            # DEEP INDICATOR: Surge Detection (>20% increase in 15-min window)
+            surge_info = self.detect_surge(state, lga, risk_score)
+            surge_detected = surge_info['surge_detected']
+            percentage_increase = surge_info['percentage_increase']
+            
+            if surge_detected:
+                trigger_reasons.append(
+                    f"⚠️ SURGE ALERT: Risk increased by {percentage_increase:.1f}% in last 15 minutes - "
+                    f"rapid escalation detected"
+                )
             
             # Determine risk level
             if risk_score >= 80:
@@ -304,11 +448,15 @@ class RiskService:
             else:
                 risk_level = "Minimal"
             
-            # Build comprehensive trigger reason
+            # Build comprehensive trigger reason with strategic tags
             if trigger_reasons:
                 trigger_reason = f"{risk_level} Risk: " + "; ".join(trigger_reasons)
             else:
                 trigger_reason = f"{risk_level} Risk: Standard risk calculation based on {event_type} event"
+            
+            # Add strategic tags
+            if high_escalation_potential:
+                trigger_reason = "[HIGH ESCALATION POTENTIAL] " + trigger_reason
             
             return RiskSignal(
                 event_type=event.get('event_type', 'unknown'),
@@ -336,7 +484,16 @@ class RiskService:
                 lakurawa_presence=lakurawa_presence,
                 border_permeability_score=border_permeability,
                 group_affiliation=group_affiliation,
-                sophisticated_ied_usage=sophisticated_ied
+                sophisticated_ied_usage=sophisticated_ied,
+                # Strategic Deep Indicators
+                climate_vulnerability=climate_vulnerability,
+                mining_density=mining_density,
+                migration_pressure=migration_pressure,
+                poverty_rate=poverty_rate,
+                high_escalation_potential=high_escalation_potential,
+                is_farmer_herder_conflict=is_farmer_herder,
+                surge_detected=surge_detected,
+                surge_percentage_increase=percentage_increase if surge_detected else None
             )
             
         except Exception as e:

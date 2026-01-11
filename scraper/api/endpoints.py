@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from scraper.models import HealthResponse, ScrapeResponse
-from scraper.services import ScrapingService, MessageBrokerService
+from scraper.services import ScrapingService, MessageBrokerService, AutomationScheduler
 from scraper.repositories import MongoDBRepository
 from scraper.utils import get_logger, Config
 
@@ -124,3 +124,56 @@ async def get_articles(
     except Exception as e:
         logger.error("Error reading articles", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to read articles")
+
+
+@router.get("/scheduler/status")
+async def get_scheduler_status(request: Request):
+    """Get automation scheduler status for UI heartbeat indicator"""
+    try:
+        # Access scheduler from app state
+        if hasattr(request.app.state, 'automation_scheduler'):
+            automation_scheduler = request.app.state.automation_scheduler
+            status = automation_scheduler.get_status()
+            return {
+                "status": "active",
+                **status
+            }
+        else:
+            return {
+                "status": "inactive",
+                "message": "Scheduler not initialized"
+            }
+    except Exception as e:
+        logger.error("Error getting scheduler status", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get scheduler status")
+
+
+@router.get("/automation/logs")
+async def get_automation_logs(limit: int = 20):
+    """Get automation logs for system health monitoring"""
+    try:
+        import json
+        from pathlib import Path
+        
+        log_path = Path("/data/automation_logs.json")
+        
+        if not log_path.exists():
+            return {
+                "logs": [],
+                "message": "No automation logs available yet"
+            }
+        
+        logs = json.loads(log_path.read_text())
+        
+        # Return most recent logs
+        recent_logs = logs[-limit:] if len(logs) > limit else logs
+        recent_logs.reverse()  # Most recent first
+        
+        return {
+            "logs": recent_logs,
+            "total_count": len(logs)
+        }
+        
+    except Exception as e:
+        logger.error("Error reading automation logs", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to read automation logs")
