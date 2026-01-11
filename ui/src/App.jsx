@@ -4,6 +4,9 @@ import LiveSignalTicker from './components/LiveSignalTicker'
 import KPICards from './components/KPICards'
 import RiskDistributionCharts from './components/RiskDistributionCharts'
 import CompactControlPanel from './components/CompactControlPanel'
+import SignalDetailPanel from './components/SignalDetailPanel'
+import Toast from './components/Toast'
+import { API_CONFIG, POLLING_INTERVAL, NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_THRESHOLDS } from './constants'
 import './App.css'
 
 function App() {
@@ -11,6 +14,15 @@ function App() {
   const [mapInstance, setMapInstance] = useState(null)
   const [loading, setLoading] = useState(true)
   const [trendData, setTrendData] = useState([])
+  const [selectedSignal, setSelectedSignal] = useState(null)
+  const [error, setError] = useState(null)
+  const [layers, setLayers] = useState({
+    heatmap: true,
+    markers: true,
+    climate: true,
+    mining: true,
+    border: true
+  })
   const [simulationParams, setSimulationParams] = useState({
     fuel_price_index: 50,
     inflation_rate: 50,
@@ -23,18 +35,20 @@ function App() {
     const interval = setInterval(() => {
       fetchRiskSignals()
       fetchTrendData()
-    }, 5000)
+    }, POLLING_INTERVAL)
     return () => clearInterval(interval)
   }, [])
 
   const fetchTrendData = async () => {
     try {
-      const response = await fetch('http://localhost:8002/api/v1/risk-overview')
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RISK_OVERVIEW}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       if (data.trend_data) {
         setTrendData(data.trend_data)
       } else {
-        // Fallback to generated data
         generateTrendData()
       }
     } catch (error) {
@@ -58,8 +72,10 @@ function App() {
 
   const fetchRiskSignals = async () => {
     try {
-      // Try to fetch from the data directory relative to the project root
-      const response = await fetch('/data/risk_signals.json')
+      const response = await fetch(API_CONFIG.ENDPOINTS.RISK_SIGNALS)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       setRiskSignals(data)
       setLoading(false)
@@ -97,60 +113,52 @@ function App() {
 
   const handleLocationClick = (signal) => {
     if (mapInstance && signal.lga) {
-      const nigeriaLGACoords = {
-        'Maiduguri': [13.1571, 11.8333],
-        'Ikeja': [3.3375, 6.5964],
-        'Kano': [8.5167, 12.0000],
-        'Kaduna': [7.4333, 10.5167],
-        'Port Harcourt': [7.0167, 4.7833],
-        'Abuja': [7.4951, 9.0579]
-      }
-
-      const coords = nigeriaLGACoords[signal.lga] || [8.6753, 9.0820]
+      const coords = NIGERIA_LGA_COORDS[signal.lga]
+      const center = coords ? [coords.lat, coords.lng] : [NIGERIA_CENTER.lat, NIGERIA_CENTER.lng]
       
-      mapInstance.flyTo({
-        center: coords,
-        zoom: 12,
-        duration: 2000,
-        essential: true
+      mapInstance.flyTo(center, MAP_CONFIG.DETAIL_ZOOM, {
+        duration: MAP_CONFIG.FLY_DURATION
       })
     }
   }
 
-  const handleZoomToFit = () => {
-    if (mapInstance) {
-      mapInstance.flyTo({
-        center: [8.6753, 9.0820], // Nigeria center
-        zoom: 6,
-        duration: 1500,
-        essential: true
-      })
-    }
+  const handleSignalClick = (signal) => {
+    setSelectedSignal(signal)
+  }
+
+  const handleLayerChange = (newLayers) => {
+    setLayers(newLayers)
   }
 
   const handleSimulation = async (params) => {
     setSimulationParams(params)
+    setError(null)
     try {
-      const response = await fetch('http://localhost:8002/api/v1/simulate', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SIMULATE}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)
       })
+      
+      if (!response.ok) {
+        throw new Error(`Simulation failed: ${response.status} ${response.statusText}`)
+      }
+      
       const data = await response.json()
       if (data.features) {
-        // Update signals with simulated data
         const simulatedSignals = data.features.map(f => f.properties)
         setRiskSignals(simulatedSignals)
+        setError({ message: 'Simulation completed successfully', type: 'success' })
       }
-      // Refresh trend data after simulation
       fetchTrendData()
     } catch (error) {
       console.error('Simulation error:', error)
+      setError({ message: `Simulation failed: ${error.message}`, type: 'error' })
     }
   }
 
-  const criticalCount = riskSignals.filter(s => s.risk_score >= 80).length
-  const highCount = riskSignals.filter(s => s.risk_score >= 60 && s.risk_score < 80).length
+  const criticalCount = riskSignals.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length
+  const highCount = riskSignals.filter(s => s.risk_score >= RISK_THRESHOLDS.HIGH && s.risk_score < RISK_THRESHOLDS.CRITICAL).length
   const avgRiskScore = riskSignals.length > 0 
     ? Math.round(riskSignals.reduce((sum, s) => sum + s.risk_score, 0) / riskSignals.length)
     : 0
@@ -184,17 +192,10 @@ function App() {
           <SimpleHeatmap 
             signals={riskSignals}
             onMapReady={setMapInstance}
+            onSignalClick={handleSignalClick}
+            layers={layers}
+            onLayerChange={handleLayerChange}
           />
-          {/* Zoom to Fit Button */}
-          <button
-            onClick={handleZoomToFit}
-            className="absolute top-4 right-4 z-[1000] glassmorphism px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-all duration-300 flex items-center gap-2 border border-white/20"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-            </svg>
-            Zoom to Fit
-          </button>
         </div>
         
         {/* Right - National Risk Overview with Charts (30% width) */}
@@ -212,6 +213,23 @@ function App() {
           onSimulation={handleSimulation}
         />
       </div>
+      
+      {/* Signal Detail Panel */}
+      {selectedSignal && (
+        <SignalDetailPanel 
+          signal={selectedSignal}
+          onClose={() => setSelectedSignal(null)}
+        />
+      )}
+      
+      {/* Toast Notifications */}
+      {error && (
+        <Toast 
+          message={error.message}
+          type={error.type}
+          onClose={() => setError(null)}
+        />
+      )}
     </div>
   )
 }

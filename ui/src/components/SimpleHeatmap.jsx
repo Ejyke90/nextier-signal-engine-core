@@ -1,8 +1,12 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import PropTypes from 'prop-types'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
+import IndicatorLegend from './IndicatorLegend'
+import LayerToggle from './LayerToggle'
+import { NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_COLORS, CIRCLE_RADIUS, RISK_THRESHOLDS, INDICATOR_THRESHOLDS } from '../constants'
 
 const HeatmapLayer = ({ points }) => {
   const map = useMap()
@@ -21,6 +25,7 @@ const HeatmapLayer = ({ points }) => {
       blur: 15,
       maxZoom: 17,
       max: 1.0,
+      minOpacity: 0.4,
       gradient: {
         0.0: 'rgba(0, 255, 255, 0)',
         0.2: 'rgba(0, 255, 255, 0.4)',
@@ -29,7 +34,19 @@ const HeatmapLayer = ({ points }) => {
         0.8: 'rgba(255, 165, 0, 0.9)',
         1.0: 'rgba(220, 20, 60, 1)'
       }
-    }).addTo(map)
+    })
+    
+    heat.addTo(map)
+    
+    // Patch canvas context after layer is added to suppress performance warning
+    setTimeout(() => {
+      if (heat._canvas) {
+        const oldGetContext = heat._canvas.getContext.bind(heat._canvas)
+        heat._canvas.getContext = function(type, attributes) {
+          return oldGetContext(type, { ...attributes, willReadFrequently: true })
+        }
+      }
+    }, 0)
 
     return () => {
       map.removeLayer(heat)
@@ -39,21 +56,37 @@ const HeatmapLayer = ({ points }) => {
   return null
 }
 
-const SimpleHeatmap = ({ signals, onMapReady }) => {
-  const nigeriaLGACoords = {
-    'Maiduguri': { lat: 11.8333, lng: 13.1571 },
-    'Ikeja': { lat: 6.5964, lng: 3.3375 },
-    'Kano': { lat: 12.0000, lng: 8.5167 },
-    'Kaduna': { lat: 10.5167, lng: 7.4333 },
-    'Port Harcourt': { lat: 4.7833, lng: 7.0167 },
-    'Abuja': { lat: 9.0579, lng: 7.4951 },
-    'Lagos': { lat: 6.5244, lng: 3.3792 },
-    'Ibadan': { lat: 7.3775, lng: 3.8964 },
-    'Benin City': { lat: 6.3350, lng: 5.6258 }
+const SimpleHeatmap = ({ signals, onMapReady, onSignalClick, layers, onLayerChange }) => {
+  const getCircleColor = (riskScore) => {
+    if (riskScore >= RISK_THRESHOLDS.CRITICAL) return RISK_COLORS.CRITICAL
+    if (riskScore >= RISK_THRESHOLDS.HIGH) return RISK_COLORS.HIGH
+    if (riskScore >= RISK_THRESHOLDS.MEDIUM) return RISK_COLORS.MEDIUM
+    return RISK_COLORS.LOW
+  }
+
+  const getCircleRadius = (riskScore) => {
+    if (riskScore >= RISK_THRESHOLDS.CRITICAL) return CIRCLE_RADIUS.CRITICAL
+    if (riskScore >= RISK_THRESHOLDS.HIGH) return CIRCLE_RADIUS.HIGH
+    if (riskScore >= RISK_THRESHOLDS.MEDIUM) return CIRCLE_RADIUS.MEDIUM
+    return CIRCLE_RADIUS.LOW
+  }
+
+  const getIndicatorBadges = (signal) => {
+    const badges = []
+    if (layers?.climate && signal.flood_inundation_index && signal.flood_inundation_index > INDICATOR_THRESHOLDS.FLOOD_INUNDATION) {
+      badges.push('🌊')
+    }
+    if (layers?.mining && signal.mining_proximity_km && signal.mining_proximity_km < INDICATOR_THRESHOLDS.MINING_PROXIMITY_KM) {
+      badges.push('⛏️')
+    }
+    if (layers?.border && signal.border_activity && ['High', 'Critical'].includes(signal.border_activity)) {
+      badges.push('🚨')
+    }
+    return badges
   }
 
   const heatmapPoints = signals.map(signal => {
-    const coords = nigeriaLGACoords[signal.lga] || { lat: 9.0820, lng: 8.6753 }
+    const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
     return {
       lat: coords.lat,
       lng: coords.lng,
@@ -64,8 +97,8 @@ const SimpleHeatmap = ({ signals, onMapReady }) => {
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        center={[9.0820, 8.6753]}
-        zoom={6}
+        center={[NIGERIA_CENTER.lat, NIGERIA_CENTER.lng]}
+        zoom={MAP_CONFIG.DEFAULT_ZOOM}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         whenReady={(map) => {
@@ -78,8 +111,59 @@ const SimpleHeatmap = ({ signals, onMapReady }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <HeatmapLayer points={heatmapPoints} />
+        {layers?.heatmap !== false && <HeatmapLayer points={heatmapPoints} />}
+        
+        {/* Circle Markers for each signal */}
+        {layers?.markers !== false && signals.map((signal, idx) => {
+          const coords = NIGERIA_LGA_COORDS[signal.lga] || NIGERIA_CENTER
+          const badges = getIndicatorBadges(signal)
+          return (
+            <CircleMarker
+              key={`${signal.state}-${signal.lga}-${idx}`}
+              center={[coords.lat, coords.lng]}
+              radius={getCircleRadius(signal.risk_score)}
+              fillColor={getCircleColor(signal.risk_score)}
+              color="#ffffff"
+              weight={2}
+              opacity={0.9}
+              fillOpacity={0.7}
+              eventHandlers={{
+                click: () => {
+                  if (onSignalClick) {
+                    onSignalClick(signal)
+                  }
+                }
+              }}
+            >
+              <Popup>
+                <div className="text-gray-900 text-sm">
+                  <div className="font-bold text-base mb-2 flex items-center gap-2">
+                    <span>{signal.state} - {signal.lga}</span>
+                    {badges.length > 0 && (
+                      <span className="text-xs">{badges.join(' ')}</span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div><span className="font-semibold">Risk Score:</span> {signal.risk_score}</div>
+                    <div><span className="font-semibold">Risk Level:</span> {signal.risk_level}</div>
+                    <div><span className="font-semibold">Event Type:</span> {signal.event_type}</div>
+                    <div><span className="font-semibold">Severity:</span> {signal.severity}</div>
+                  </div>
+                  <button
+                    onClick={() => onSignalClick && onSignalClick(signal)}
+                    className="mt-2 w-full bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
+                  >
+                    View Full Details
+                  </button>
+                </div>
+              </Popup>
+            </CircleMarker>
+          )
+        })}
       </MapContainer>
+
+      <IndicatorLegend />
+      <LayerToggle layers={layers} onLayerChange={onLayerChange} />
 
       <div className="absolute top-4 left-4 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg p-4 max-w-xs z-[1000]">
         <h4 className="text-sm font-bold text-white mb-3">🔥 CONFLICT HEATMAP</h4>
@@ -91,7 +175,7 @@ const SimpleHeatmap = ({ signals, onMapReady }) => {
           <div className="flex justify-between">
             <span className="text-gray-400">Hot Zones (≥80):</span>
             <span className="text-red-400 font-bold animate-pulse">
-              {signals.filter(s => s.risk_score >= 80).length}
+              {signals.filter(s => s.risk_score >= RISK_THRESHOLDS.CRITICAL).length}
             </span>
           </div>
           <div className="flex justify-between">
@@ -139,6 +223,30 @@ const SimpleHeatmap = ({ signals, onMapReady }) => {
       </div>
     </div>
   )
+}
+
+SimpleHeatmap.propTypes = {
+  signals: PropTypes.arrayOf(PropTypes.shape({
+    state: PropTypes.string,
+    lga: PropTypes.string,
+    risk_score: PropTypes.number,
+    risk_level: PropTypes.string,
+    event_type: PropTypes.string,
+    severity: PropTypes.string,
+    flood_inundation_index: PropTypes.number,
+    mining_proximity_km: PropTypes.number,
+    border_activity: PropTypes.string
+  })).isRequired,
+  onMapReady: PropTypes.func,
+  onSignalClick: PropTypes.func,
+  layers: PropTypes.shape({
+    heatmap: PropTypes.bool,
+    markers: PropTypes.bool,
+    climate: PropTypes.bool,
+    mining: PropTypes.bool,
+    border: PropTypes.bool
+  }),
+  onLayerChange: PropTypes.func
 }
 
 export default SimpleHeatmap
