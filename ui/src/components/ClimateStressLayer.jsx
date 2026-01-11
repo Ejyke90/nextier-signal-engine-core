@@ -15,8 +15,8 @@ const ClimateStressLayer = ({ enabled }) => {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Response is not JSON')
+        if (!contentType || (!contentType.includes('application/json') && !contentType.includes('application/geo+json'))) {
+          throw new Error('Response is not JSON or GeoJSON')
         }
         const data = await response.json()
         setClimateData(data)
