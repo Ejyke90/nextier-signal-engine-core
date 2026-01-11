@@ -516,20 +516,6 @@ async def get_categorization_stats(
         raise HTTPException(status_code=500, detail="Failed to get categorization stats")
 
 
-@router.get("/api/v1/stats/categorization-audit")
-async def categorization_audit():
-    logger.info("Fetching categorization audit stats")
-    # Placeholder for actual logic to check uncategorized articles
-    return {"remaining_articles": 0, "message": "All articles categorized"}
-
-
-@router.post("/api/v1/categorize")
-async def trigger_categorization():
-    logger.info("Triggering categorization process")
-    # Placeholder for triggering categorization process
-    return {"message": "Categorization process triggered successfully"}
-
-
 @router.get("/stats/categorization-audit")
 async def get_categorization_audit(
     repo: MongoDBRepository = Depends(get_mongodb_repository)
@@ -538,8 +524,8 @@ async def get_categorization_audit(
     Retrieve statistics about remaining uncategorized articles.
     """
     try:
-        total_articles = await repo.get_articles_count()
-        categorized_articles = await repo.get_categorized_articles_count()
+        total_articles = repo.get_articles_count()
+        categorized_articles = repo.get_categorized_articles_count()
         remaining_articles = total_articles - categorized_articles
         logger.info(f"Retrieved categorization audit: {remaining_articles} articles remaining")
         return {"remaining_articles": remaining_articles, "total_articles": total_articles, "categorized_articles": categorized_articles}
@@ -557,22 +543,31 @@ async def trigger_categorization(
     Trigger the categorization process for uncategorized articles.
     """
     try:
-        uncategorized_articles = await repo.get_uncategorized_articles()
+        uncategorized_articles = repo.get_uncategorized_articles()
         if not uncategorized_articles:
             return {"message": "No uncategorized articles found to process"}
         
+        # Convert articles to signal format and publish
+        signals = []
         for article in uncategorized_articles:
-            await broker.publish_event("parsed_events", {
+            signal = {
                 "id": str(article["_id"]),
                 "title": article.get("title", ""),
                 "content": article.get("content", ""),
                 "source": article.get("source", ""),
                 "url": article.get("url", ""),
                 "published_date": article.get("published_date", "").isoformat() if article.get("published_date") else None
-            })
+            }
+            signals.append(signal)
+        
+        broker.publish_signals(signals)
         
         logger.info(f"Triggered categorization for {len(uncategorized_articles)} articles")
         return {"message": f"Triggered categorization for {len(uncategorized_articles)} articles"}
     except Exception as e:
         logger.error(f"Error triggering categorization: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error triggering categorization: {str(e)}")
+
+
+
+

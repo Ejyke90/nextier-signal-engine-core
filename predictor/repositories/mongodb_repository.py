@@ -15,6 +15,7 @@ class MongoDBRepository:
         self.parsed_events_collection = None
         self.risk_signals_collection = None
         self.economic_data_collection = None
+        self.articles_collection = None
         self._connect()
     
     def _connect(self) -> None:
@@ -25,6 +26,7 @@ class MongoDBRepository:
             self.parsed_events_collection = self.db.parsed_events
             self.risk_signals_collection = self.db.risk_signals
             self.economic_data_collection = self.db.economic_data
+            self.articles_collection = self.db.articles
             logger.info("Connected to MongoDB", database=Config.MONGODB_DATABASE)
         except Exception as e:
             logger.error("Failed to connect to MongoDB", error=str(e))
@@ -44,7 +46,15 @@ class MongoDBRepository:
             logger.error("Failed to retrieve parsed events", error=str(e))
             return []
     
-    def get_economic_data(self) -> pd.DataFrame:
+    def get_articles_count(self) -> int:
+        """Get total count of articles in MongoDB"""
+        try:
+            count = self.articles_collection.count_documents({})
+            logger.info("Retrieved articles count", count=count)
+            return count
+        except PyMongoError as e:
+            logger.error("Failed to retrieve articles count", error=str(e))
+            return 0
         """Get economic data from MongoDB as DataFrame"""
         try:
             data = list(self.economic_data_collection.find())
@@ -147,6 +157,33 @@ class MongoDBRepository:
     
     def close(self) -> None:
         """Close MongoDB connection"""
-        if self.client:
-            self.client.close()
-            logger.info("Closed MongoDB connection")
+        try:
+            if self.client:
+                self.client.close()
+                logger.info("Closed MongoDB connection")
+        except Exception as e:
+            logger.error("Error closing MongoDB connection", error=str(e))
+    
+    def get_categorized_articles_count(self) -> int:
+        """Get count of categorized articles"""
+        try:
+            count = self.articles_collection.count_documents({"category": {"$exists": True}})
+            logger.info("Retrieved categorized articles count", count=count)
+            return count
+        except PyMongoError as e:
+            logger.error("Failed to retrieve categorized articles count", error=str(e))
+            return 0
+    
+    def get_uncategorized_articles(self) -> List[Dict]:
+        """Get uncategorized articles"""
+        try:
+            articles = list(self.articles_collection.find({"category": {"$exists": False}}))
+            # Convert ObjectId to string for JSON serialization
+            for article in articles:
+                if '_id' in article:
+                    article['_id'] = str(article['_id'])
+            logger.info("Retrieved uncategorized articles", count=len(articles))
+            return articles
+        except PyMongoError as e:
+            logger.error("Failed to retrieve uncategorized articles", error=str(e))
+            return []

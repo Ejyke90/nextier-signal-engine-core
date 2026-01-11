@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "region": "Lake Chad Basin",
+        "indicator": "Water Recession",
+        "recession_index": 0.92,
+        "impact_zone": "High",
+        "conflict_correlation": "Resource Scarcity / Extremist Recruitment"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[13.5, 13.0], [14.5, 13.0], [14.5, 14.0], [13.5, 14.0], [13.5, 13.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "region": "Hadejia-Nguru Wetlands",
+        "indicator": "Desertification",
+        "recession_index": 0.78,
+        "impact_zone": "Medium-High",
+        "conflict_correlation": "Farmer-Herder Migration Pressure"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[10.0, 12.5], [11.0, 12.5], [11.0, 13.0], [10.0, 13.0], [10.0, 12.5]]]
+      }
+    }
+  ]
+}
