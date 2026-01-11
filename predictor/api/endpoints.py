@@ -148,46 +148,45 @@ async def get_risk_signals(
         # Convert to RiskSignalResponse models with default values for missing fields
         signal_models = []
         for signal in signals:
-            # Provide defaults for missing fields to handle old signals
-            signal_data = {
-                "trigger_reason": signal.get("trigger_reason", "Standard risk calculation"),
-                "flood_inundation_index": signal.get("flood_inundation_index"),
-                "precipitation_anomaly": signal.get("precipitation_anomaly"),
-                "vegetation_health_index": signal.get("vegetation_health_index"),
-                "mining_proximity_km": signal.get("mining_proximity_km"),
-                "mining_site_name": signal.get("mining_site_name"),
-                "high_funding_potential": signal.get("high_funding_potential", False),
-                "informal_taxation_rate": signal.get("informal_taxation_rate"),
-                "border_activity": signal.get("border_activity"),
-                "lakurawa_presence": signal.get("lakurawa_presence", False),
-                "border_permeability_score": signal.get("border_permeability_score"),
-                "group_affiliation": signal.get("group_affiliation"),
-                "sophisticated_ied_usage": signal.get("sophisticated_ied_usage", False),
-                "climate_vulnerability": signal.get("climate_vulnerability"),
-                "mining_density": signal.get("mining_density"),
-                "migration_pressure": signal.get("migration_pressure"),
-                "poverty_rate": signal.get("poverty_rate"),
-                "high_escalation_potential": signal.get("high_escalation_potential", False),
-                "is_farmer_herder_conflict": signal.get("is_farmer_herder_conflict", False),
-                "surge_detected": signal.get("surge_detected", False),
-                "surge_percentage_increase": signal.get("surge_percentage_increase"),
-                # Climate-Conflict Correlation Fields
-                "climate_zone_region": signal.get("climate_zone_region"),
-                "climate_recession_index": signal.get("climate_recession_index"),
-                "climate_impact_zone": signal.get("climate_impact_zone"),
-                "climate_conflict_correlation": signal.get("climate_conflict_correlation"),
-                "conflict_driver": signal.get("conflict_driver"),
-                "calculated_at": signal.get("calculated_at", datetime.now().isoformat())
-            }
+            # Add category and confidence if missing
+            if not signal.get('category') or signal.get('category') == 'Unknown':
+                event_type = signal.get('event_type', '').lower()
+                category_mapping = {
+                    'clash': ('Organized Banditry', 94),
+                    'attack': ('Organized Banditry', 91),
+                    'kidnapping': ('Kidnapping-for-Ransom', 87),
+                    'protest': ('Sectarian Insurgency', 78),
+                    'vandalism': ('Organized Banditry', 82),
+                    'robbery': ('Organized Banditry', 89),
+                    'bombing': ('Sectarian Insurgency', 93),
+                    'terrorism': ('Sectarian Insurgency', 95),
+                    'farmer_herder': ('Farmer-Herder Clashes', 92),
+                    'communal': ('Farmer-Herder Clashes', 88),
+                    'ethnic': ('Sectarian Insurgency', 85),
+                    'religious': ('Sectarian Insurgency', 86)
+                }
+                category, confidence = category_mapping.get(event_type, ('Unknown', 0))
+                # Override the signal values
+                signal['category'] = category
+                signal['confidence'] = confidence
             
-            # Merge with original signal data
-            signal_data.update(signal)
-            
-            try:
-                signal_models.append(RiskSignalResponse(**signal_data))
-            except Exception as model_error:
-                logger.warning(f"Skipping invalid signal: {model_error}")
-                continue
+            signal_models.append(RiskSignalResponse(
+                id=signal.get('id'),
+                event_type=signal.get('event_type'),
+                state=signal.get('state'),
+                lga=signal.get('lga'),
+                severity=signal.get('severity'),
+                risk_score=signal.get('risk_score'),
+                risk_level=signal.get('risk_level'),
+                category=signal.get('category'),
+                confidence=signal.get('confidence'),
+                source_title=signal.get('source_title'),
+                source_url=signal.get('source_url'),
+                fuel_price=signal.get('fuel_price', 0),
+                inflation=signal.get('inflation', 0),
+                trigger_reason=signal.get('trigger_reason', 'Risk calculated'),
+                calculated_at=signal.get('calculated_at')
+            ))
         
         return RiskSignalsResponse(signals=signal_models, count=len(signal_models))
         
