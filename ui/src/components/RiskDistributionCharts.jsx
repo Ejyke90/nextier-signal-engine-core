@@ -2,14 +2,18 @@ import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 import { TrendingUp, AlertTriangle } from 'lucide-react'
 
 const RiskDistributionCharts = ({ signals, trendData }) => {
+  // Ensure signals and trendData are always arrays
+  const signalsArray = Array.isArray(signals) ? signals : []
+  const trendDataArray = Array.isArray(trendData) && trendData.length > 0 ? trendData : []
+  
   const riskDistribution = [
-    { name: 'Critical', value: signals.filter(s => s.risk_score >= 80).length, color: '#FF4B4B' },
-    { name: 'High', value: signals.filter(s => s.risk_score >= 60 && s.risk_score < 80).length, color: '#FFA500' },
-    { name: 'Medium', value: signals.filter(s => s.risk_score >= 40 && s.risk_score < 60).length, color: '#FFD700' },
-    { name: 'Low', value: signals.filter(s => s.risk_score < 40).length, color: '#00FF00' }
+    { name: 'Critical', value: signalsArray.filter(s => s.risk_score >= 80).length, color: '#FF4B4B' },
+    { name: 'High', value: signalsArray.filter(s => s.risk_score >= 60 && s.risk_score < 80).length, color: '#FFA500' },
+    { name: 'Medium', value: signalsArray.filter(s => s.risk_score >= 40 && s.risk_score < 60).length, color: '#FFD700' },
+    { name: 'Low', value: signalsArray.filter(s => s.risk_score < 40).length, color: '#00FF00' }
   ]
 
-  const topAffectedStates = signals
+  const topAffectedStates = signalsArray
     .reduce((acc, signal) => {
       const state = signal.state || 'Unknown'
       acc[state] = (acc[state] || 0) + 1
@@ -92,35 +96,44 @@ const RiskDistributionCharts = ({ signals, trendData }) => {
             7-Day Risk Trend
           </h3>
         </div>
-        <ResponsiveContainer width="100%" height="85%">
-          <AreaChart data={trendData}>
-            <defs>
-              <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FF4B4B" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#FF4B4B" stopOpacity={0.1}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#9CA3AF"
-              style={{ fontSize: '12px' }}
-            />
-            <YAxis 
-              stroke="#9CA3AF"
-              style={{ fontSize: '12px' }}
-            />
-            <Tooltip content={<TrendTooltip />} />
-            <Area 
-              type="monotone" 
-              dataKey="risk" 
-              stroke="#FF4B4B" 
-              strokeWidth={2}
-              fillOpacity={1} 
-              fill="url(#colorRisk)" 
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {trendDataArray.length > 0 ? (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={trendDataArray}>
+              <defs>
+                <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF4B4B" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#FF4B4B" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#9CA3AF"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis 
+                stroke="#9CA3AF"
+                style={{ fontSize: '12px' }}
+              />
+              <Tooltip content={<TrendTooltip />} />
+              <Area 
+                type="monotone" 
+                dataKey="risk" 
+                stroke="#FF4B4B" 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill="url(#colorRisk)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[200px] flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No trend data available</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Top Affected States */}
