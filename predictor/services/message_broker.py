@@ -3,33 +3,44 @@ import pika
 from pika.exceptions import AMQPError
 from typing import List, Dict, Any
 from ..utils import get_logger, Config
+import time
 
 logger = get_logger(__name__)
 
 
 class MessageBrokerService:
-    def __init__(self):
+    def __init__(self, max_retries=5, retry_delay=5):
         self.connection = None
         self.channel = None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self._connect()
     
     def _connect(self) -> None:
         """Connect to RabbitMQ"""
-        try:
-            parameters = pika.URLParameters(Config.RABBITMQ_URL)
-            self.connection = pika.BlockingConnection(parameters)
-            self.channel = self.connection.channel()
-            
-            # Declare queues
-            self.channel.queue_declare(queue=Config.RABBITMQ_QUEUE_EVENTS, durable=True)
-            self.channel.queue_declare(queue=Config.RABBITMQ_QUEUE_SIGNALS, durable=True)
-            
-            logger.info("Connected to RabbitMQ", 
-                       events_queue=Config.RABBITMQ_QUEUE_EVENTS,
-                       signals_queue=Config.RABBITMQ_QUEUE_SIGNALS)
-        except Exception as e:
-            logger.error("Failed to connect to RabbitMQ", error=str(e))
-            raise
+        retries = 0
+        while retries < self.max_retries:
+            try:
+                parameters = pika.URLParameters(Config.RABBITMQ_URL)
+                self.connection = pika.BlockingConnection(parameters)
+                self.channel = self.connection.channel()
+                
+                # Declare queues
+                self.channel.queue_declare(queue=Config.RABBITMQ_QUEUE_EVENTS, durable=True)
+                self.channel.queue_declare(queue=Config.RABBITMQ_QUEUE_SIGNALS, durable=True)
+                
+                logger.info("Connected to RabbitMQ", 
+                           events_queue=Config.RABBITMQ_QUEUE_EVENTS,
+                           signals_queue=Config.RABBITMQ_QUEUE_SIGNALS)
+                break
+            except Exception as e:
+                retries += 1
+                logger.error(f"Failed to connect to RabbitMQ (attempt {retries}/{self.max_retries}): {str(e)}")
+                if retries < self.max_retries:
+                    time.sleep(self.retry_delay)
+                else:
+                    logger.error("Max retries reached. Could not connect to RabbitMQ.")
+                    raise
     
     def consume_events(self, callback) -> None:
         """Consume parsed events from message broker"""

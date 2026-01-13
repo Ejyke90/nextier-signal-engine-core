@@ -1,7 +1,7 @@
-import { Activity, AlertTriangle, MapPin, Radio } from 'lucide-react'
+import { Activity, AlertTriangle, MapPin, Radio, Database, Brain } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-const KPICards = ({ signals, criticalCount, affectedStates }) => {
+const KPICards = ({ signals, criticalCount, affectedStates, ingestionVolume, intelligenceDepth }) => {
   const [lastIngestionTime, setLastIngestionTime] = useState(null)
 
   useEffect(() => {
@@ -77,11 +77,27 @@ const KPICards = ({ signals, criticalCount, affectedStates }) => {
       borderColor: 'border-green-500/30',
       subValue: 'Source Uptime: 100%',
       pulse: true
+    },
+    {
+      label: 'Ingestion Volume',
+      value: ingestionVolume.toLocaleString(),
+      icon: Database,
+      color: 'text-cyan-400',
+      bgColor: 'bg-cyan-500/10',
+      borderColor: 'border-cyan-500/30'
+    },
+    {
+      label: 'Intelligence Depth',
+      value: intelligenceDepth.toLocaleString(),
+      icon: Brain,
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/30'
     }
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-4 p-4">
+    <div className="grid grid-cols-6 gap-4 p-4">
       {kpis.map((kpi, index) => {
         const Icon = kpi.icon
         return (

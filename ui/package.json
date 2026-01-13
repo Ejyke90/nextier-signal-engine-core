@@ -4,6 +4,8 @@
   "description": "Nigeria Conflict Risk Monitor - Sovereign Intelligence Dashboard",
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/validate-assets.js",
+    "check-assets": "node scripts/validate-assets.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -16,11 +18,15 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
-    "recharts": "^2.10.3"
+    "react-markdown": "^9.0.1",
+    "recharts": "^2.10.3",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "glob": "^13.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "vite": "^5.0.8"

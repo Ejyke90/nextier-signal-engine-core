@@ -329,5 +329,259 @@
       "db_success": true,
       "mq_success": false
     }
+  },
+  {
+    "timestamp": "2026-01-11T20:00:07.916849",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 7.899778,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:01:02.956911",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 62.940644,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:05:53.183505",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": "2026-01-11T20:00:00.015045"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:06:24.486977",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T20:15:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:09:20.962431",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:12:26.244295",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T20:15:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:15:06.528149",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 6.518315,
+      "db_success": true,
+      "mq_success": true
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:30:08.003626",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 7.980524,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:31:38.562871",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": "2026-01-11T20:30:00.014938"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:32:01.977598",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T20:45:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:37:53.692963",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:38:11.999856",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T20:45:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:43:53.755942",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:50:14.919497",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T21:00:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:54:58.665856",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-11T20:55:04.831250",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-11T21:00:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-11T21:00:30.824186",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 30.812682,
+      "db_success": true,
+      "mq_success": true
+    }
+  },
+  {
+    "timestamp": "2026-01-11T21:16:50.426916",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 35,
+      "high_risk_count": 0,
+      "duration_seconds": 110.411944,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T21:30:06.572740",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 6.555653,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-11T21:45:07.399796",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 30,
+      "high_risk_count": 0,
+      "duration_seconds": 7.384665,
+      "db_success": true,
+      "mq_success": false
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:22:45.963083",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-13T05:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:25:44.944140",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-13T05:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:28:15.350819",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-13T05:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:28:26.522036",
+    "event_type": "scheduler_stop",
+    "status": "success",
+    "details": {
+      "last_run": null
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:28:58.529079",
+    "event_type": "scheduler_start",
+    "status": "success",
+    "details": {
+      "schedule": "*/15 * * * *",
+      "next_run": "2026-01-13T05:30:00+00:00"
+    }
+  },
+  {
+    "timestamp": "2026-01-13T05:30:44.643719",
+    "event_type": "scheduled_scrape",
+    "status": "success",
+    "details": {
+      "articles_count": 40,
+      "high_risk_count": 0,
+      "duration_seconds": 44.634323,
+      "db_success": true,
+      "mq_success": true
+    }
   }
 ]

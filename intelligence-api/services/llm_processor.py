@@ -3,7 +3,7 @@ import httpx
 import asyncio
 from typing import Dict, Any, Optional
 from functools import lru_cache
-from circuitbreaker import circuit
+from circuitbreaker import circuit, CircuitBreakerError
 from tenacity import retry, stop_after_attempt, wait_exponential
 from ..utils import get_logger, Config
 
@@ -132,6 +132,30 @@ class LLMProcessor:
             logger.error("Unexpected error calling Ollama LLM for categorization", error=str(e))
             return {"category": "Unknown", "confidence": 0}
 
+    def rule_based_categorize(self, text: str) -> Dict[str, Any]:
+        """Fallback categorization using keyword-based rules when LLM is unavailable"""
+        text_lower = text.lower()
+        
+        # Banditry keywords
+        if any(keyword in text_lower for keyword in ['bandit', 'armed robbery', 'highway robbery', 'bank robbery', 'robbery']):
+            return {"category": "Banditry", "confidence": 70}
+        
+        # Kidnapping keywords  
+        elif any(keyword in text_lower for keyword in ['kidnap', 'kidnapped', 'abduct', 'abducted', 'hostage', 'ransom']):
+            return {"category": "Kidnapping", "confidence": 75}
+        
+        # Gunmen Violence keywords
+        elif any(keyword in text_lower for keyword in ['gunmen', 'gunman', 'drive-by', 'shooting', 'gunfire', 'armed attack']):
+            return {"category": "Gunmen Violence", "confidence": 65}
+        
+        # Farmer-Herder Clashes keywords
+        elif any(keyword in text_lower for keyword in ['herder', 'farmer', 'grazing', 'cattle rustling', 'land dispute', 'pastoralist']):
+            return {"category": "Farmer-Herder Clashes", "confidence": 60}
+        
+        # Default unknown
+        else:
+            return {"category": "Unknown", "confidence": 20}
+
     async def categorize_articles_batch(self, articles: list) -> list:
         """Categorize multiple articles concurrently"""
         try:
@@ -141,15 +165,31 @@ class LLMProcessor:
             async def categorize_with_semaphore(article):
                 async with semaphore:
                     text = f"Title: {article.get('title', '')}\n\nContent: {article.get('content', '')}"
-                    result = await self.analyze_with_ollama(text)
-                    if isinstance(result, dict):
+                    try:
+                        result = await self.analyze_with_ollama(text)
+                        if isinstance(result, dict):
+                            return {
+                                "id": article.get("_id"),
+                                "category": result["category"],
+                                "confidence": result["confidence"]
+                            }
+                        else:
+                            # Fallback for unexpected return type
+                            return {
+                                "id": article.get("_id"),
+                                "category": "Unknown",
+                                "confidence": 0
+                            }
+                    except CircuitBreakerError:
+                        # Circuit breaker open: fallback to rule-based categorization
+                        result = self.rule_based_categorize(text)
                         return {
                             "id": article.get("_id"),
                             "category": result["category"],
                             "confidence": result["confidence"]
                         }
-                    else:
-                        # Fallback for unexpected return type
+                    except Exception as e:
+                        # Any other error: safe fallback
                         return {
                             "id": article.get("_id"),
                             "category": "Unknown",

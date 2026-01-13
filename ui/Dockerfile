@@ -1,3 +1,21 @@
+# Stage 1: Build React app with Node.js
+FROM node:18-alpine AS builder
+
+WORKDIR /app/ui
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Build the React app
+RUN npm run build
+
+# Stage 2: Serve with Python/FastAPI
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -19,6 +37,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application code
 COPY . .
+
+# Copy built React app from builder stage
+COPY --from=builder /app/ui/dist ./ui/dist
 
 # Copy and set up entrypoint script
 COPY entrypoint.sh /entrypoint.sh

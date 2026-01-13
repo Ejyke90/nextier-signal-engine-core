@@ -191,6 +191,23 @@ docker-compose up predictor
 docker-compose up mongodb rabbitmq  # Infrastructure only
 ```
 
+### Rebuilding UI After Changes
+
+When you make changes to the React UI (components, styles, etc.), rebuild and restart:
+
+```bash
+cd ui
+npm run build
+cd ..
+docker compose restart ui
+```
+
+For a full rebuild of all services including UI:
+
+```bash
+./demo-prep.sh
+```
+
 ### Environment Variables
 
 The services support extensive configuration through environment variables:

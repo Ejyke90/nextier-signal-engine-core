@@ -11,6 +11,7 @@ import PolicymakerAlert from './components/PolicymakerAlert'
 import CategorizationIntelligence from './components/CategorizationIntelligence'
 import ConflictArchetypeDistribution from './components/ConflictArchetypeDistribution'
 import Logo from './components/Logo';
+import ChatWithData from './components/ChatWithData'
 import { API_CONFIG, POLLING_INTERVAL, NIGERIA_LGA_COORDS, NIGERIA_CENTER, MAP_CONFIG, RISK_THRESHOLDS } from './constants'
 import './App.css'
 
@@ -361,10 +362,11 @@ function App() {
             />
           </div>
           
-          {/* Right - National Risk Overview with Charts (30% width) */}
+          {/* Right - National Risk Overview with Charts and Chat (30% width) */}
           <div className="w-[30%] bg-gray-900/50 overflow-y-auto">
             <div className="p-4 space-y-4">
               <PolicymakerAlert signals={enrichedSignals} />
+              <ChatWithData />
               <RiskDistributionCharts 
                 signals={riskSignals}
                 trendData={trendData}
